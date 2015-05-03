@@ -7,6 +7,11 @@ Source code compiled with AVR Studio v4.18 + WinAVR for attiny45, optimization -
 
 SUT_CKSEL fuse should be programmed for external 4 Mhz crystal oscillator.
 
+
+-- WARNING --
+SETTING RSTDISBL TO ENABLED WILL MAKE IT IMPOSSIBLE TO PROGRAM THE CHIP WITH NORMAL METHODS - YOU WILL NEED A HIGH VOLTAGE PROGRAMMER TO RESET THE FUSES
+-- WARNING --
+
 Low Fuse = 0xCD
 High Fuse = 0x5F
 Extended = 0xFF
