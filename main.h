@@ -3,6 +3,8 @@
 // Author		: Boris Cherkasskiy
 // Created		: 2011-10-24
 //
+// Modified     : 2015-05-03 by Arnie Weber
+//
 // This code is distributed under the GNU Public License
 // which can be found at http://www.gnu.org/licenses/gpl.txt
 //
@@ -57,6 +59,7 @@
 
 #define PIN_DIAL PB2
 #define PIN_PULSE PB1
+#define PIN_DEBUG PB5         // [AW] toggle pin for debug
 
 
 // Helper functions

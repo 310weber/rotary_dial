@@ -4,10 +4,19 @@ Schematic_v1-0.png - adapter schematic
 wd_we500c-d.pdf - phone schematic
 
 Source code compiled with AVR Studio v4.18 + WinAVR for attiny45, optimization -O1.
-SUT_CKSEL fuse should be programmed for external 8 Mhz crystal oscillator.
+
+SUT_CKSEL fuse should be programmed for external 4 Mhz crystal oscillator.
+
+Low Fuse = 0xCD
+High Fuse = 0x5F
+Extended = 0xFF
+
+ - Clock = Ext. Crystal, 3-8 MHz, 1 CK / 14 CK + 65 ms
+ - CKDIV8 = disabled (use full 4 MHz speed)
+ - RSTDISBL = enabled (use PB5 as I/O)
 
 The converter originally designed to be mounted/wired inside the phone. 
 It has to be connected in parallel to the phone line, but _after_ the hook switch, e.g. between terminals C and F/RR on the phone schematic. 
 Rotary dial (all 4 wires) has to be disconnected from the phone and wired to the adapter (see schematic). 
 The adapter is polarity sensitive.
-Terminal C is just a solder pad, so I ended up using L2 instead (it’s a nice screw terminal).
+Terminal C is just a solder pad, so I ended up using L2 instead (itï¿½s a nice screw terminal).

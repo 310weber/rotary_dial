@@ -94,6 +94,7 @@ int main(void)
 
 				sDS.iDialedDigit = 0;
 				SleepMS (50);	// Delay 50ms
+				cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin at start of pulse count
 			} 
 			else 
 			{
@@ -135,8 +136,13 @@ int main(void)
 					bSF_DetectionActive = false;
 
 					// A pulse just started
+					sbi(PORTB, PIN_DEBUG);        // [AW] set debug pin high when pulse is detected
 					sDS.iDialedDigit++;
 					SleepMS (50);	// delay 50ms
+				}
+				else if ((bPrevPulseState != bCurPulseState) && !bCurPulseState)      // [AW]
+				{
+					cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin when pulse goes low
 				}
 			} 
 			else
@@ -324,7 +330,7 @@ void init (void)
 	
 	// Configure I/O pins
 	PORTB = 0;	// Reset all outputs. Force PWM output (PB0) to 0
-	DDRB   = (1 << PIN_PWM_OUT);	// PWM output (supposed to be OC0A pin)
+	DDRB   = (1 << PIN_PWM_OUT) | (1 << PIN_DEBUG);	// PWM output (OC0A pin) [AW] and debug (PB5)
 	PORTB  = (1 << PIN_DIAL) | (1 << PIN_PULSE);  // Enable Dial/Pulse pull-up resistors
 
 	// Disable unused modules to save power
