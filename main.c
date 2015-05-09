@@ -36,6 +36,9 @@ volatile unsigned int iCurSinValB = 0;           // position freq. B in LUT (ext
 
 volatile unsigned long ulDelayCounter = 0;		// Delay counter for sleep function
 
+volatile bool bSF_DetectionActive = false;        // SF detection active [AW] Moved from local main() variables
+volatile bool bCurDialState = true;		     // Rotor status [AW] Moved from local main() variables
+
 // Dial status structure
 typedef struct struct_DialStatus
 {	
@@ -71,9 +74,7 @@ int main(void)
 	// Local dial status variables 
 	volatile bool bPrevDialState = true;		// Rotor status
 	volatile bool bPrevPulseState = false;	// Rotor pulse status
-	volatile bool bCurDialState = true;		// Rotor status
 	volatile bool bCurPulseState = false;	// Rotor pulse status
-	volatile bool bSF_DetectionActive = false; // SF detection active
 
 
 	// Main loop
@@ -130,21 +131,21 @@ int main(void)
 			if (!bCurDialState) 
 			{
 				// Dial is running				
-				if ((bPrevPulseState != bCurPulseState) && bCurPulseState)
-				{
-					// Disabling SF detection
-					bSF_DetectionActive = false;
-
-					// A pulse just started
-					sbi(PORTB, PIN_DEBUG);        // [AW] set debug pin high when pulse is detected
-					sDS.iDialedDigit++;
-					SleepMS (50);	// delay 50ms
-				}
-				else if ((bPrevPulseState != bCurPulseState) && !bCurPulseState)      // [AW]
-				{
-					cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin when pulse goes low
-				}
-			} 
+//				if ((bPrevPulseState != bCurPulseState) && bCurPulseState)       //[AW] moved to INT0 handler
+//				{
+//					// Disabling SF detection
+//					bSF_DetectionActive = false;
+//
+//					// A pulse just started
+//					sbi(PORTB, PIN_DEBUG);        // [AW] set debug pin high when pulse is detected
+//					sDS.iDialedDigit++;
+//					SleepMS (50);	// delay 50ms
+//				}
+//				else if ((bPrevPulseState != bCurPulseState) && !bCurPulseState)      // [AW]
+//				{
+//					cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin when pulse goes low
+//				}
+			}
 			else
 			{
 				// Rotary dial at the rest position
@@ -338,7 +339,8 @@ void init (void)
 	ACSR = (1<<ACD);
 
 	// Configure pin change interrupt
-	GIMSK = (1<<PCIE);
+	MCUCR = (1 << ISC01) | (1 << ISC00);         // [AW] Set INT0 for rising edge detection
+	GIMSK = (1 << INT0) | (1 << PCIE);           // [AW] Added INT0
 	PCMSK = (1 << PIN_DIAL) | (1 << PIN_PULSE);
 
 	// Initialize (global) dial status structure (sDS)
@@ -522,9 +524,33 @@ TIMER_INTERRUPT_HANDLER(SIG_OVERFLOW0)
 }
 
 
-// Pin change interrupt 
-PIN_INTERRUPT_HANDLER(SIG_PIN_CHANGE)
-{ 
+// [AW] Handler for external interrupt on INT0 (PB2, pin 7)
+ISR(INT0_vect)
+{
+	if (!bCurDialState)
+	{
+	    // Disabling SF detection
+		bSF_DetectionActive = false;
+
+		// A pulse just started
+		sbi(PORTB, PIN_DEBUG);        // [AW] set debug pin high when pulse is detected
+		sDS.iDialedDigit++;
+		SleepMS (50);	// delay 50ms
+		cbi(PORTB, PIN_DEBUG);
+	}
+}
+
+// [AW] Interrupt handlers updated to new code convention
+// Interrupt initiated by pin change on any enabled pin
+ISR(PCINT0_vect)
+{
+	// Do nothing, just wake up MCU
+	_delay_us(100);
+}
+
+// [AW] Handler for any unspecified 'bad' interrupts
+ISR(BADISR_vect)
+{
 	// Do nothing, just wake up MCU
 	_delay_us(100);
 }
