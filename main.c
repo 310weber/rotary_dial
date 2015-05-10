@@ -36,8 +36,9 @@ volatile unsigned int iCurSinValB = 0;           // position freq. B in LUT (ext
 
 volatile unsigned long ulDelayCounter = 0;		// Delay counter for sleep function
 
-volatile bool bSF_DetectionActive = false;        // SF detection active [AW] Moved from local main() variables
-volatile bool bCurDialState = true;		     // Rotor status [AW] Moved from local main() variables
+volatile bool bSF_DetectionActive = false;		// SF detection active [AW] Moved from local main() variables
+volatile bool bCurDialState = true;		     	// Rotor status [AW] Moved from local main() variables
+volatile bool bPulseDetected = false;			// [AW] Pass to main() when pulse (rising edge) detected on INT0
 
 // Dial status structure
 typedef struct struct_DialStatus
@@ -182,6 +183,14 @@ int main(void)
 			// Don't need timer - sleep to power down mode
 			set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 			sleep_mode();
+		}
+
+		if(bPulseDetected)			// [AW] toggle debug pin if pulse was detected this loop
+		{
+			sbi(PORTB, PIN_DEBUG); 		// [AW] set debug pin high when pulse is detected
+			SleepMS (20);				// delay 50ms
+			cbi(PORTB, PIN_DEBUG);
+			bPulseDetected = false;
 		}
 	}
 		 
@@ -332,14 +341,14 @@ void init (void)
 	// Configure I/O pins
 	PORTB = 0;	// Reset all outputs. Force PWM output (PB0) to 0
 	DDRB   = (1 << PIN_PWM_OUT) | (1 << PIN_DEBUG);	// PWM output (OC0A pin) [AW] and debug (PB5)
-	PORTB  = (1 << PIN_DIAL) | (1 << PIN_PULSE);  // Enable Dial/Pulse pull-up resistors
+	PORTB  = 0;  // [AW] Disable Pull-ups - external HW debounce
 
 	// Disable unused modules to save power
 	PRR = (1<<PRTIM1) | (1<<PRUSI) | (1<<PRADC);
 	ACSR = (1<<ACD);
 
 	// Configure pin change interrupt
-	MCUCR = (1 << ISC01) | (1 << ISC00);         // [AW] Set INT0 for rising edge detection
+	MCUCR = (1 << ISC01) | (0 << ISC00);         // [AW] Set INT0 for falling edge detection
 	GIMSK = (1 << INT0) | (1 << PCIE);           // [AW] Added INT0
 	PCMSK = (1 << PIN_DIAL) | (1 << PIN_PULSE);
 
@@ -533,10 +542,8 @@ ISR(INT0_vect)
 		bSF_DetectionActive = false;
 
 		// A pulse just started
-		sbi(PORTB, PIN_DEBUG);        // [AW] set debug pin high when pulse is detected
+		bPulseDetected = true;			// [AW] Set flag to be handled by main() - never delay in interrupt vector
 		sDS.iDialedDigit++;
-		SleepMS (50);	// delay 50ms
-		cbi(PORTB, PIN_DEBUG);
 	}
 }
 
