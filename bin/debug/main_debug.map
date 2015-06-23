@@ -1,0 +1,556 @@
+Archive member included because of file (symbol)
+
+/usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+                              main_debug.o (__udivmodhi4)
+/usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+                              /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o (exit)
+/usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+                              main_debug.o (__do_copy_data)
+/usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+                              main_debug.o (__do_clear_bss)
+/usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+                              main_debug.o (__eerd_block_tn85)
+/usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+                              main_debug.o (__eeupd_block_tn85)
+/usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+                              /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o) (__eeupd_r18_tn85)
+
+Allocating common symbols
+Common symbol       size              file
+
+sDS                 0x22              main_debug.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+text             0x0000000000000000 0x0000000000002000 xr
+data             0x0000000000800060 0x000000000000ffa0 rw !x
+eeprom           0x0000000000810000 0x0000000000010000 rw !x
+fuse             0x0000000000820000 0x0000000000000400 rw !x
+lock             0x0000000000830000 0x0000000000000400 rw !x
+signature        0x0000000000840000 0x0000000000000400 rw !x
+user_signatures  0x0000000000850000 0x0000000000000400 rw !x
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+LOAD main_debug.o
+LOAD /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libm.a
+START GROUP
+LOAD /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a
+LOAD /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libm.a
+LOAD /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a
+END GROUP
+
+.hash
+ *(.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rel.init
+ *(.rel.init)
+
+.rela.init
+ *(.rela.init)
+
+.rel.text
+ *(.rel.text)
+ *(.rel.text.*)
+ *(.rel.gnu.linkonce.t*)
+
+.rela.text
+ *(.rela.text)
+ *(.rela.text.*)
+ *(.rela.gnu.linkonce.t*)
+
+.rel.fini
+ *(.rel.fini)
+
+.rela.fini
+ *(.rela.fini)
+
+.rel.rodata
+ *(.rel.rodata)
+ *(.rel.rodata.*)
+ *(.rel.gnu.linkonce.r*)
+
+.rela.rodata
+ *(.rela.rodata)
+ *(.rela.rodata.*)
+ *(.rela.gnu.linkonce.r*)
+
+.rel.data
+ *(.rel.data)
+ *(.rel.data.*)
+ *(.rel.gnu.linkonce.d*)
+
+.rela.data
+ *(.rela.data)
+ *(.rela.data.*)
+ *(.rela.gnu.linkonce.d*)
+
+.rel.ctors
+ *(.rel.ctors)
+
+.rela.ctors
+ *(.rela.ctors)
+
+.rel.dtors
+ *(.rel.dtors)
+
+.rela.dtors
+ *(.rela.dtors)
+
+.rel.got
+ *(.rel.got)
+
+.rela.got
+ *(.rela.got)
+
+.rel.bss
+ *(.rel.bss)
+
+.rela.bss
+ *(.rela.bss)
+
+.rel.plt
+ *(.rel.plt)
+
+.rela.plt
+ *(.rela.plt)
+
+.text           0x0000000000000000      0x728
+ *(.vectors)
+ .vectors       0x0000000000000000       0x1e /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+                0x0000000000000000                __vectors
+ *(.vectors)
+ *(.progmem.gcc*)
+ *(.progmem*)
+                0x000000000000001e                . = ALIGN (0x2)
+                0x000000000000001e                __trampolines_start = .
+ *(.trampolines)
+ .trampolines   0x000000000000001e        0x0 linker stubs
+ *(.trampolines*)
+                0x000000000000001e                __trampolines_end = .
+ *(.jumptables)
+ *(.jumptables*)
+ *(.lowtext)
+ *(.lowtext*)
+                0x000000000000001e                __ctors_start = .
+ *(.ctors)
+                0x000000000000001e                __ctors_end = .
+                0x000000000000001e                __dtors_start = .
+ *(.dtors)
+                0x000000000000001e                __dtors_end = .
+ SORT(*)(.ctors)
+ SORT(*)(.dtors)
+ *(.init0)
+ .init0         0x000000000000001e        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+                0x000000000000001e                __init
+ *(.init0)
+ *(.init1)
+ *(.init1)
+ *(.init2)
+ .init2         0x000000000000001e        0xc /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+ *(.init2)
+ *(.init3)
+ *(.init3)
+ *(.init4)
+ .init4         0x000000000000002a       0x16 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+                0x000000000000002a                __do_copy_data
+ .init4         0x0000000000000040       0x10 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+                0x0000000000000040                __do_clear_bss
+ *(.init4)
+ *(.init5)
+ *(.init5)
+ *(.init6)
+ *(.init6)
+ *(.init7)
+ *(.init7)
+ *(.init8)
+ *(.init8)
+ *(.init9)
+ .init9         0x0000000000000050        0x4 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+ *(.init9)
+ *(.text)
+ .text          0x0000000000000054        0x2 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+                0x0000000000000054                __vector_12
+                0x0000000000000054                __bad_interrupt
+                0x0000000000000054                __vector_6
+                0x0000000000000054                __vector_3
+                0x0000000000000054                __vector_11
+                0x0000000000000054                __vector_13
+                0x0000000000000054                __vector_7
+                0x0000000000000054                __vector_4
+                0x0000000000000054                __vector_9
+                0x0000000000000054                __vector_8
+                0x0000000000000054                __vector_14
+                0x0000000000000054                __vector_10
+ .text          0x0000000000000056      0x644 main_debug.o
+                0x0000000000000056                init
+                0x00000000000000ac                EnablePWM
+                0x00000000000000ba                SleepMS
+                0x000000000000012a                GenerateDigit
+                0x0000000000000200                Dial_SpeedDialNumber
+                0x0000000000000272                WriteCurrentSpeedDial
+                0x00000000000002a4                ProcessDialedDigit
+                0x00000000000003fa                main
+                0x000000000000053a                __vector_5
+                0x000000000000061e                __vector_1
+                0x000000000000065a                __vector_2
+                0x000000000000067a                __vector_default
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+ .text          0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+                0x000000000000069a                . = ALIGN (0x2)
+ *(.text.*)
+ .text.libgcc.mul
+                0x000000000000069a        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.div
+                0x000000000000069a       0x28 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+                0x000000000000069a                __udivmodhi4
+ .text.libgcc   0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.prologue
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.builtins
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.fmul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.fixed
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .text.libgcc.mul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.div
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc   0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.prologue
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.builtins
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.fmul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.fixed
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .text.libgcc.mul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.div
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc   0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.prologue
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.builtins
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.fmul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.fixed
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc.mul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc.div
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc   0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc.prologue
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc.builtins
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc.fmul
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc.fixed
+                0x00000000000006c2        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .text.avr-libc
+                0x00000000000006c2       0x20 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+                0x00000000000006c2                __eerd_block_tn85
+                0x00000000000006c6                __eerd_blraw_tn85
+ .text.avr-libc
+                0x00000000000006e2       0x1e /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+                0x00000000000006e2                __eeupd_block_tn85
+ .text.avr-libc
+                0x0000000000000700       0x24 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+                0x0000000000000700                __eeupd_byte_tn85
+                0x0000000000000702                __eeupd_r18_tn85
+                0x0000000000000724                . = ALIGN (0x2)
+ *(.fini9)
+ .fini9         0x0000000000000724        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+                0x0000000000000724                exit
+                0x0000000000000724                _exit
+ *(.fini9)
+ *(.fini8)
+ *(.fini8)
+ *(.fini7)
+ *(.fini7)
+ *(.fini6)
+ *(.fini6)
+ *(.fini5)
+ *(.fini5)
+ *(.fini4)
+ *(.fini4)
+ *(.fini3)
+ *(.fini3)
+ *(.fini2)
+ *(.fini2)
+ *(.fini1)
+ *(.fini1)
+ *(.fini0)
+ .fini0         0x0000000000000724        0x4 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ *(.fini0)
+                0x0000000000000728                _etext = .
+
+.data           0x0000000000800060       0x9a load address 0x0000000000000728
+                0x0000000000800060                PROVIDE (__data_start, .)
+ *(.data)
+ .data          0x0000000000800060        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+ .data          0x0000000000800060        0x1 main_debug.o
+                0x0000000000800060                bCurDialState
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+ .data          0x0000000000800061        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+ *(.data*)
+ *(.rodata)
+ .rodata        0x0000000000800061       0x98 main_debug.o
+                0x0000000000800061                auc_frequency
+                0x0000000000800079                auc_SinParam
+ *(.rodata*)
+ *(.gnu.linkonce.d*)
+                0x00000000008000fa                . = ALIGN (0x2)
+ *fill*         0x00000000008000f9        0x1 
+                0x00000000008000fa                _edata = .
+                0x00000000008000fa                PROVIDE (__data_end, .)
+
+.bss            0x00000000008000fa       0x2e
+                0x00000000008000fa                PROVIDE (__bss_start, .)
+ *(.bss)
+ .bss           0x00000000008000fa        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+ .bss           0x00000000008000fa        0xc main_debug.o
+                0x00000000008000fa                bPulseDetected
+                0x00000000008000fb                bSF_DetectionActive
+                0x00000000008000fc                ulDelayCounter
+                0x0000000000800100                iCurSinValB
+                0x0000000000800102                iCurSinValA
+                0x0000000000800104                cSWb
+                0x0000000000800105                cSWa
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+ .bss           0x0000000000800106        0x0 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+ *(.bss*)
+ *(COMMON)
+ COMMON         0x0000000000800106       0x22 main_debug.o
+                0x0000000000800106                sDS
+                0x0000000000800128                PROVIDE (__bss_end, .)
+                0x0000000000000728                __data_load_start = LOADADDR (.data)
+                0x00000000000007c2                __data_load_end = (__data_load_start + SIZEOF (.data))
+
+.noinit         0x0000000000800128        0x0
+                0x0000000000800128                PROVIDE (__noinit_start, .)
+ *(.noinit*)
+                0x0000000000800128                PROVIDE (__noinit_end, .)
+                0x0000000000800128                _end = .
+                0x0000000000800128                PROVIDE (__heap_start, .)
+
+.eeprom         0x0000000000810000       0xd2
+ *(.eeprom*)
+ .eeprom        0x0000000000810000       0xd2 main_debug.o
+                0x0000000000810000                EEPROM_SpeedDial
+                0x00000000008100d2                __eeprom_end = .
+
+.fuse
+ *(.fuse)
+ *(.lfuse)
+ *(.hfuse)
+ *(.efuse)
+
+.lock
+ *(.lock*)
+
+.signature
+ *(.signature*)
+
+.user_signatures
+ *(.user_signatures*)
+
+.stab           0x0000000000000000      0x9cc
+ *(.stab)
+ .stab          0x0000000000000000      0x6cc /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+ .stab          0x00000000000006cc      0x108 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+                                        0x114 (size before relaxing)
+ .stab          0x00000000000007d4       0xe4 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+                                         0xf0 (size before relaxing)
+ .stab          0x00000000000008b8      0x114 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+                                        0x120 (size before relaxing)
+
+.stabstr        0x0000000000000000       0xe5
+ *(.stabstr)
+ .stabstr       0x0000000000000000       0xe5 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x11
+ *(.comment)
+ .comment       0x0000000000000000       0x11 main_debug.o
+                                         0x12 (size before relaxing)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x0000000000000000       0x20
+ *(.debug_aranges)
+ .debug_aranges
+                0x0000000000000000       0x20 main_debug.o
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x0000000000000000      0x8bc
+ *(.debug_info)
+ .debug_info    0x0000000000000000      0x8bc main_debug.o
+ *(.gnu.linkonce.wi.*)
+
+.debug_abbrev   0x0000000000000000      0x26c
+ *(.debug_abbrev)
+ .debug_abbrev  0x0000000000000000      0x26c main_debug.o
+
+.debug_line     0x0000000000000000      0x214
+ *(.debug_line)
+ .debug_line    0x0000000000000000      0x214 main_debug.o
+
+.debug_frame    0x0000000000000000      0x190
+ *(.debug_frame)
+ .debug_frame   0x0000000000000000      0x190 main_debug.o
+
+.debug_str      0x0000000000000000      0x37e
+ *(.debug_str)
+ .debug_str     0x0000000000000000      0x37e main_debug.o
+                                        0x3b2 (size before relaxing)
+
+.debug_loc      0x0000000000000000      0x587
+ *(.debug_loc)
+ .debug_loc     0x0000000000000000      0x587 main_debug.o
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_macro
+ *(.debug_macro)
+OUTPUT(main_debug.elf elf32-avr)
+LOAD linker stubs
+
+Cross Reference Table
+
+Symbol                                            File
+Dial_SpeedDialNumber                              main_debug.o
+EEPROM_SpeedDial                                  main_debug.o
+EnablePWM                                         main_debug.o
+GenerateDigit                                     main_debug.o
+ProcessDialedDigit                                main_debug.o
+SleepMS                                           main_debug.o
+WriteCurrentSpeedDial                             main_debug.o
+__bad_interrupt                                   /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__bss_end                                         /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+__bss_start                                       /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+__data_end                                        /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+__data_load_start                                 /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+__data_start                                      /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+__do_clear_bss                                    /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_clear_bss.o)
+                                                  main_debug.o
+__do_copy_data                                    /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_copy_data.o)
+                                                  main_debug.o
+__eerd_block_tn85                                 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+                                                  main_debug.o
+__eerd_blraw_tn85                                 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eerd_block_attiny85.o)
+__eeupd_block_tn85                                /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+                                                  main_debug.o
+__eeupd_byte_tn85                                 /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+__eeupd_r18_tn85                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_byte_attiny85.o)
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/libc.a(eeupd_block_attiny85.o)
+__heap_end                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__init                                            /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__stack                                           /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__udivmodhi4                                      /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_udivmodhi4.o)
+                                                  main_debug.o
+__vector_1                                        main_debug.o
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_10                                       /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_11                                       /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_12                                       /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_13                                       /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_14                                       /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_2                                        main_debug.o
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_3                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_4                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_5                                        main_debug.o
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_6                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_7                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_8                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_9                                        /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vector_default                                  main_debug.o
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+__vectors                                         /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+_exit                                             /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+auc_SinParam                                      main_debug.o
+auc_frequency                                     main_debug.o
+bCurDialState                                     main_debug.o
+bPulseDetected                                    main_debug.o
+bSF_DetectionActive                               main_debug.o
+cSWa                                              main_debug.o
+cSWb                                              main_debug.o
+exit                                              /usr/lib/gcc/avr/4.8.2/avr25/libgcc.a(_exit.o)
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+iCurSinValA                                       main_debug.o
+iCurSinValB                                       main_debug.o
+init                                              main_debug.o
+main                                              main_debug.o
+                                                  /usr/lib/gcc/avr/4.8.2/../../../avr/lib/avr25/crttn85.o
+sDS                                               main_debug.o
+ulDelayCounter                                    main_debug.o

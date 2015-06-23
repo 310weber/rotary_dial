@@ -1,0 +1,2659 @@
+   1               		.file	"main_debug.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	init
+  12               	init:
+  13               	.LFB8:
+  14               		.file 1 "main_debug.c"
+   1:main_debug.c  **** //*****************************************************************************
+   2:main_debug.c  **** // Title		: Pulse to tone (DTMF) converter
+   3:main_debug.c  **** // Author		: Boris Cherkasskiy
+   4:main_debug.c  **** // Created		: 2011-10-24
+   5:main_debug.c  **** // Modified		: Arnie Weber 2015-06-22
+   6:main_debug.c  **** // 					https://bitbucket.org/310weber/rotary_dial/
+   7:main_debug.c  **** //
+   8:main_debug.c  **** //
+   9:main_debug.c  **** // This code is distributed under the GNU Public License
+  10:main_debug.c  **** // which can be found at http://www.gnu.org/licenses/gpl.txt
+  11:main_debug.c  **** //
+  12:main_debug.c  **** // DTMF generator logic is loosely based on the AVR314 app note from Atmel
+  13:main_debug.c  **** //
+  14:main_debug.c  **** //*****************************************************************************
+  15:main_debug.c  **** 
+  16:main_debug.c  **** 
+  17:main_debug.c  **** //----- Include Files ---------------------------------------------------------
+  18:main_debug.c  **** #include <avr/io.h>		// include I/O definitions (port names, pin names, etc)
+  19:main_debug.c  **** #include <avr/interrupt.h>	// include interrupt support
+  20:main_debug.c  **** #include <avr/sleep.h>
+  21:main_debug.c  **** //#include <avr/wdt.h> 
+  22:main_debug.c  **** #include <util/delay.h>
+  23:main_debug.c  **** #include <stdbool.h>
+  24:main_debug.c  **** #include <avr/eeprom.h>
+  25:main_debug.c  **** #include "main.h" 
+  26:main_debug.c  **** 
+  27:main_debug.c  **** 
+  28:main_debug.c  **** // EEPROM variables
+  29:main_debug.c  **** // 7 speed dial number (dialed special function 3-9)
+  30:main_debug.c  **** signed char EEMEM EEPROM_SpeedDial[7][SPEED_DIAL_SIZE] = {[0 ... 6][0 ... SPEED_DIAL_SIZE-1] = DIGI
+  31:main_debug.c  **** 
+  32:main_debug.c  **** 
+  33:main_debug.c  **** // Global Variables 
+  34:main_debug.c  **** volatile unsigned char cSWa = 0x00;               // step width of high frequency
+  35:main_debug.c  **** volatile unsigned char cSWb = 0x00;               // step width of low frequency
+  36:main_debug.c  **** 
+  37:main_debug.c  **** volatile unsigned int iCurSinValA = 0;           // position freq. A in LUT (extended format)
+  38:main_debug.c  **** volatile unsigned int iCurSinValB = 0;           // position freq. B in LUT (extended format)
+  39:main_debug.c  **** 
+  40:main_debug.c  **** volatile unsigned long ulDelayCounter = 0;		// Delay counter for sleep function
+  41:main_debug.c  **** 
+  42:main_debug.c  **** volatile bool bSF_DetectionActive = false;		// SF detection active [AW] Moved from local main() var
+  43:main_debug.c  **** volatile bool bCurDialState = true;		     	// Rotor status [AW] Moved from local main() variables
+  44:main_debug.c  **** volatile bool bPulseDetected = false;			// [AW] Pass to main() when pulse (rising edge) detected on
+  45:main_debug.c  **** 
+  46:main_debug.c  **** // Dial status structure
+  47:main_debug.c  **** typedef struct struct_DialStatus
+  48:main_debug.c  **** {	
+  49:main_debug.c  **** 	signed char iDialedDigit;					// Dialed/detected digit
+  50:main_debug.c  **** 
+  51:main_debug.c  **** 	// SF dialed by holding rotor for few seconds (beep to indicate that SF is activated) before relea
+  52:main_debug.c  **** 	// SF defined as: 1:*; 2:#; 3-9: speed dial; 0: program speed dial number	
+  53:main_debug.c  **** 	bool bSF_Selected;							// Special Function selected
+  54:main_debug.c  **** 	
+  55:main_debug.c  **** 	signed char iSpeedDialDigitIndex;			// Speed dial digit index
+  56:main_debug.c  **** 	signed char iSpeedDialIndex; 				// Speed dial digi index (in the SD array)
+  57:main_debug.c  **** 	signed char arSpeedDial[SPEED_DIAL_SIZE];	// Selected speed dial arrays		
+  58:main_debug.c  **** } type_DialStatus;
+  59:main_debug.c  **** 
+  60:main_debug.c  **** volatile type_DialStatus sDS;	// Global dial status structure
+  61:main_debug.c  **** 
+  62:main_debug.c  **** 
+  63:main_debug.c  **** //----- BEGIN MAIN ------------------------------------------------------------
+  64:main_debug.c  **** int main(void)
+  65:main_debug.c  **** {
+  66:main_debug.c  **** 	// Program clock prescaller to divide +frequency by 1
+  67:main_debug.c  **** 	// Write CLKPCE 1 and other bits 0	
+  68:main_debug.c  **** 	CLKPR = (1<<CLKPCE);	
+  69:main_debug.c  **** 	// Write prescaler value with CLKPCE = 0
+  70:main_debug.c  **** 	CLKPR = 0x00;
+  71:main_debug.c  **** 
+  72:main_debug.c  **** 	// Initialize I/O and global variables
+  73:main_debug.c  **** 	init();
+  74:main_debug.c  **** 
+  75:main_debug.c  **** 	// Turn PWM OFF
+  76:main_debug.c  **** 	GenerateDigit(DIGIT_OFF, 0); 
+  77:main_debug.c  **** 
+  78:main_debug.c  **** 	// Local dial status variables 
+  79:main_debug.c  **** 	volatile bool bPrevDialState = true;		// Rotor status
+  80:main_debug.c  **** 	volatile bool bPrevPulseState = false;	// Rotor pulse status
+  81:main_debug.c  **** 	volatile bool bCurPulseState = false;	// Rotor pulse status
+  82:main_debug.c  **** 
+  83:main_debug.c  **** 
+  84:main_debug.c  **** 	// Main loop
+  85:main_debug.c  ****   	while (1)
+  86:main_debug.c  **** 	{ 
+  87:main_debug.c  **** 		bCurDialState = bit_is_set (PINB, PIN_DIAL);
+  88:main_debug.c  **** 		bCurPulseState = bit_is_set (PINB, PIN_PULSE);
+  89:main_debug.c  **** 
+  90:main_debug.c  **** 
+  91:main_debug.c  **** 		if (bPrevDialState != bCurDialState) 
+  92:main_debug.c  **** 		{
+  93:main_debug.c  **** 			if (!bCurDialState) 
+  94:main_debug.c  **** 			{
+  95:main_debug.c  **** 				// Dial just started
+  96:main_debug.c  **** 				// Enabling special function detection
+  97:main_debug.c  **** 				bSF_DetectionActive = true;
+  98:main_debug.c  **** 				sDS.bSF_Selected = false;
+  99:main_debug.c  **** 
+ 100:main_debug.c  **** 				sDS.iDialedDigit = 0;
+ 101:main_debug.c  **** 				SleepMS (50);	// Delay 50ms
+ 102:main_debug.c  **** 				cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin at start of pulse count
+ 103:main_debug.c  **** 			} 
+ 104:main_debug.c  **** 			else 
+ 105:main_debug.c  **** 			{
+ 106:main_debug.c  **** 				// Disabling SF detection (should be already disabled)
+ 107:main_debug.c  **** 				bSF_DetectionActive = false;
+ 108:main_debug.c  **** 
+ 109:main_debug.c  **** 				// Check that we detect a valid digit
+ 110:main_debug.c  **** 				if ((sDS.iDialedDigit <= 0) || (sDS.iDialedDigit > 10))
+ 111:main_debug.c  **** 				{
+ 112:main_debug.c  **** 					// Should never happen - no pulses detected OR count more than 10 pulses
+ 113:main_debug.c  **** 					sDS.iDialedDigit = DIGIT_OFF;					
+ 114:main_debug.c  **** 
+ 115:main_debug.c  **** 					// Do nothing
+ 116:main_debug.c  **** 					SleepMS (50);	// Delay 50ms
+ 117:main_debug.c  **** 				}
+ 118:main_debug.c  **** 				else 
+ 119:main_debug.c  **** 				{
+ 120:main_debug.c  **** 					// Got a valid digit - process it			
+ 121:main_debug.c  **** 					if (sDS.iDialedDigit == 10)
+ 122:main_debug.c  **** 					{
+ 123:main_debug.c  **** 						// 10 pulses => 0
+ 124:main_debug.c  **** 						sDS.iDialedDigit = 0;
+ 125:main_debug.c  **** 					}
+ 126:main_debug.c  **** 
+ 127:main_debug.c  **** 					ProcessDialedDigit();
+ 128:main_debug.c  **** 				}
+ 129:main_debug.c  **** 					
+ 130:main_debug.c  **** 				sDS.bSF_Selected = false;	// Reset SF flag
+ 131:main_debug.c  **** 			}	
+ 132:main_debug.c  **** 		} 
+ 133:main_debug.c  **** 		else 
+ 134:main_debug.c  **** 		{
+ 135:main_debug.c  **** 			if (!bCurDialState) 
+ 136:main_debug.c  **** 			{
+ 137:main_debug.c  **** 				// Dial is running				
+ 138:main_debug.c  **** 				// [AW] functions moved to INT0 routine
+ 139:main_debug.c  **** 			}
+ 140:main_debug.c  **** 			else
+ 141:main_debug.c  **** 			{
+ 142:main_debug.c  **** 				// Rotary dial at the rest position
+ 143:main_debug.c  **** 				// Reset all variables
+ 144:main_debug.c  **** 				bSF_DetectionActive = false;
+ 145:main_debug.c  **** 				sDS.bSF_Selected = false;
+ 146:main_debug.c  **** 				sDS.iDialedDigit = DIGIT_OFF;
+ 147:main_debug.c  **** 			}
+ 148:main_debug.c  **** 		}
+ 149:main_debug.c  **** 
+ 150:main_debug.c  **** 		bPrevDialState = bCurDialState;
+ 151:main_debug.c  **** 		bPrevPulseState = bCurPulseState;
+ 152:main_debug.c  **** 
+ 153:main_debug.c  **** 		// Don't power down if special function detection is active		
+ 154:main_debug.c  **** 		if (bSF_DetectionActive)
+ 155:main_debug.c  **** 		{
+ 156:main_debug.c  **** 			// SF detection in progress - we need timer to run (IDLE mode)
+ 157:main_debug.c  **** 			set_sleep_mode(SLEEP_MODE_IDLE);		
+ 158:main_debug.c  **** 			sleep_mode();
+ 159:main_debug.c  **** 
+ 160:main_debug.c  **** 			// Special function mode detected?
+ 161:main_debug.c  **** 			if (ulDelayCounter >= SF_DELAY_MS * T0_OVERFLOW_PER_MS)
+ 162:main_debug.c  **** 			{
+ 163:main_debug.c  **** 				// SF mode detected
+ 164:main_debug.c  **** 				sDS.bSF_Selected = true;
+ 165:main_debug.c  **** 				bSF_DetectionActive = false;
+ 166:main_debug.c  **** 
+ 167:main_debug.c  **** 				// Indicate that we entered SF mode wit short beep
+ 168:main_debug.c  **** 				GenerateDigit (DIGIT_BEEP, 200);
+ 169:main_debug.c  **** 			}
+ 170:main_debug.c  **** 		}
+ 171:main_debug.c  **** 		else
+ 172:main_debug.c  **** 		{
+ 173:main_debug.c  **** 			// Don't need timer - sleep to power down mode
+ 174:main_debug.c  **** 			set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+ 175:main_debug.c  **** 			sleep_mode();
+ 176:main_debug.c  **** 		}
+ 177:main_debug.c  **** 
+ 178:main_debug.c  **** 		if(bPulseDetected)			// [AW] toggle debug pin if pulse was detected this loop
+ 179:main_debug.c  **** 		{
+ 180:main_debug.c  **** 			sbi(PORTB, PIN_DEBUG); 		// [AW] set debug pin high when pulse is detected
+ 181:main_debug.c  **** 			SleepMS (20);				// delay 50ms
+ 182:main_debug.c  **** 			cbi(PORTB, PIN_DEBUG);
+ 183:main_debug.c  **** 			bPulseDetected = false;
+ 184:main_debug.c  **** 		}
+ 185:main_debug.c  **** 	}
+ 186:main_debug.c  **** 		 
+ 187:main_debug.c  **** 	return 0;
+ 188:main_debug.c  **** }
+ 189:main_debug.c  **** //----- END MAIN ------------------------------------------------------------
+ 190:main_debug.c  **** 
+ 191:main_debug.c  **** 
+ 192:main_debug.c  **** 
+ 193:main_debug.c  **** // Processing dialed digit
+ 194:main_debug.c  **** void ProcessDialedDigit (void)
+ 195:main_debug.c  **** {
+ 196:main_debug.c  **** 	// Special functions 1 and 2 (* and #)
+ 197:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 1))				
+ 198:main_debug.c  **** 	{
+ 199:main_debug.c  **** 		// SF 1-*
+ 200:main_debug.c  **** 		sDS.iDialedDigit = DIGIT_STAR;
+ 201:main_debug.c  **** 	}
+ 202:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit == 2))
+ 203:main_debug.c  **** 	{
+ 204:main_debug.c  **** 		// SF 2-#
+ 205:main_debug.c  **** 		sDS.iDialedDigit = DIGIT_POUND;
+ 206:main_debug.c  **** 	}
+ 207:main_debug.c  **** 
+ 208:main_debug.c  **** 	// Speed dial functionality - entering and leaving SD mode
+ 209:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 0))
+ 210:main_debug.c  **** 	{
+ 211:main_debug.c  **** 		// SF 0 - write speed dial
+ 212:main_debug.c  **** 
+ 213:main_debug.c  **** 		// SP programming already in progress?
+ 214:main_debug.c  **** 		if (sDS.iSpeedDialDigitIndex < 0)
+ 215:main_debug.c  **** 		{
+ 216:main_debug.c  **** 			// Just entered SD mode						
+ 217:main_debug.c  **** 			sDS.iSpeedDialDigitIndex = 0;
+ 218:main_debug.c  **** 
+ 219:main_debug.c  **** 			// At this point we don't know SD index yet
+ 220:main_debug.c  **** 			sDS.iSpeedDialIndex = -1;
+ 221:main_debug.c  **** 
+ 222:main_debug.c  **** 			// Clear selected SD array
+ 223:main_debug.c  **** 			for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 224:main_debug.c  **** 			{
+ 225:main_debug.c  **** 				sDS.arSpeedDial[i] = DIGIT_OFF;
+ 226:main_debug.c  **** 			}
+ 227:main_debug.c  **** 
+ 228:main_debug.c  **** 			// Beep upon entering SD mode, user has to enter SD index
+ 229:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_ASC, 700);
+ 230:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_DESC, 700);
+ 231:main_debug.c  **** 		}
+ 232:main_debug.c  **** 		else
+ 233:main_debug.c  **** 		{
+ 234:main_debug.c  **** 			// SD in progress and user entered SF 0 - save SD and exit SD mode
+ 235:main_debug.c  **** 		
+ 236:main_debug.c  **** 			// Save speed dial number
+ 237:main_debug.c  **** 			WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 238:main_debug.c  **** 
+ 239:main_debug.c  **** 			// Leave SD mode
+ 240:main_debug.c  **** 			sDS.iSpeedDialIndex = -1;
+ 241:main_debug.c  **** 			sDS.iSpeedDialDigitIndex = -1;
+ 242:main_debug.c  **** 
+ 243:main_debug.c  **** 			// Beep to indicate that we done
+ 244:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 245:main_debug.c  **** 		}
+ 246:main_debug.c  **** 	}
+ 247:main_debug.c  **** 	// Programming SD number
+ 248:main_debug.c  **** 	else if (sDS.iSpeedDialDigitIndex >= 0)
+ 249:main_debug.c  **** 	{
+ 250:main_debug.c  **** 		// First digit dialed after selecting SD mode. SD index not set yet
+ 251:main_debug.c  **** 		if (sDS.iSpeedDialIndex < 0)
+ 252:main_debug.c  **** 		{
+ 253:main_debug.c  **** 			// SD index supposed to be between 3 and 9
+ 254:main_debug.c  **** 			if ((sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 255:main_debug.c  **** 			{
+ 256:main_debug.c  **** 				sDS.iSpeedDialIndex = sDS.iDialedDigit;
+ 257:main_debug.c  **** 			
+ 258:main_debug.c  **** 				// Beep to indicate that we are in the SD mode
+ 259:main_debug.c  **** 				GenerateDigit (DIGIT_TUNE_ASC, 800);
+ 260:main_debug.c  **** 			}
+ 261:main_debug.c  **** 			else
+ 262:main_debug.c  **** 			{
+ 263:main_debug.c  **** 				// Wrong SD index - beep and exit SD mode
+ 264:main_debug.c  **** 			
+ 265:main_debug.c  **** 				// Leave SD mode
+ 266:main_debug.c  **** 				sDS.iSpeedDialIndex = -1;
+ 267:main_debug.c  **** 				sDS.iSpeedDialDigitIndex = -1;
+ 268:main_debug.c  **** 			
+ 269:main_debug.c  **** 				// Long Beep to indicate error
+ 270:main_debug.c  **** 				GenerateDigit (DIGIT_BEEP, 1000);
+ 271:main_debug.c  **** 			}
+ 272:main_debug.c  **** 		}
+ 273:main_debug.c  **** 		else
+ 274:main_debug.c  **** 		{
+ 275:main_debug.c  **** 			// Programming SD already in progress
+ 276:main_debug.c  **** 
+ 277:main_debug.c  **** 			// Do we have too many digits entered?
+ 278:main_debug.c  **** 			if (sDS.iSpeedDialDigitIndex >= SPEED_DIAL_SIZE)
+ 279:main_debug.c  **** 			{
+ 280:main_debug.c  **** 				// YES - finish and save speed dial number
+ 281:main_debug.c  **** 
+ 282:main_debug.c  **** 				// Save speed dial number
+ 283:main_debug.c  **** 				WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 284:main_debug.c  **** 
+ 285:main_debug.c  **** 				// Leave SD mode
+ 286:main_debug.c  **** 				sDS.iSpeedDialIndex = -1;
+ 287:main_debug.c  **** 				sDS.iSpeedDialDigitIndex = -1;
+ 288:main_debug.c  **** 
+ 289:main_debug.c  **** 				// Beep to indicate that we done
+ 290:main_debug.c  **** 				GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 291:main_debug.c  **** 			} 
+ 292:main_debug.c  **** 			else
+ 293:main_debug.c  **** 			{
+ 294:main_debug.c  **** 				// All good - set new digit to the array
+ 295:main_debug.c  **** 				sDS.arSpeedDial[sDS.iSpeedDialDigitIndex] = sDS.iDialedDigit;
+ 296:main_debug.c  **** 
+ 297:main_debug.c  **** 				// Generic beep - do not gererate DTMF code
+ 298:main_debug.c  **** 				GenerateDigit(DIGIT_BEEP_LOW, DTMF_DURATION_MS);
+ 299:main_debug.c  **** 
+ 300:main_debug.c  **** 				// Next digit
+ 301:main_debug.c  **** 				sDS.iSpeedDialDigitIndex++;
+ 302:main_debug.c  **** 			}
+ 303:main_debug.c  **** 		}
+ 304:main_debug.c  **** 	}
+ 305:main_debug.c  **** 	// Call SD stored number
+ 306:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 307:main_debug.c  **** 	{
+ 308:main_debug.c  **** 		// SF 3-9 -> Call speed dial number
+ 309:main_debug.c  **** 		Dial_SpeedDialNumber(sDS.iDialedDigit);
+ 310:main_debug.c  **** 	} 
+ 311:main_debug.c  **** 	// Standard (non speed dial functionality)
+ 312:main_debug.c  **** 	else
+ 313:main_debug.c  **** 	{
+ 314:main_debug.c  **** 		// Standard (no speed dial, no special function) mode
+ 315:main_debug.c  **** 		// Generate DTMF code
+ 316:main_debug.c  **** 		GenerateDigit(sDS.iDialedDigit, DTMF_DURATION_MS);  
+ 317:main_debug.c  **** 	}
+ 318:main_debug.c  **** }
+ 319:main_debug.c  **** 
+ 320:main_debug.c  **** 
+ 321:main_debug.c  **** // Initialization
+ 322:main_debug.c  **** void init (void)
+ 323:main_debug.c  **** {
+  15               		.loc 1 323 0
+  16               		.cfi_startproc
+  17               	/* prologue: function */
+  18               	/* frame size = 0 */
+  19               	/* stack size = 0 */
+  20               	.L__stack_usage = 0
+ 324:main_debug.c  **** 	TIMSK  = (1<<TOIE0);                // Int T0 Overflow enabled
+  21               		.loc 1 324 0
+  22 0000 82E0      		ldi r24,lo8(2)
+  23 0002 89BF      		out 0x39,r24
+ 325:main_debug.c  **** 
+ 326:main_debug.c  **** 	TCCR0A = (1<<WGM00) | (1<<WGM01);   // 8Bit PWM; Compare/match output mode configured later
+  24               		.loc 1 326 0
+  25 0004 93E0      		ldi r25,lo8(3)
+  26 0006 9ABD      		out 0x2a,r25
+ 327:main_debug.c  **** 	TCCR0B = TIMER_PRESCALE_MASK0 & TIMER_CLK_DIV1;
+  27               		.loc 1 327 0
+  28 0008 91E0      		ldi r25,lo8(1)
+  29 000a 93BF      		out 0x33,r25
+ 328:main_debug.c  **** 	TCNT0 = 0;
+  30               		.loc 1 328 0
+  31 000c 12BE      		out 0x32,__zero_reg__
+ 329:main_debug.c  **** 	OCR0A = 0;
+  32               		.loc 1 329 0
+  33 000e 19BC      		out 0x29,__zero_reg__
+ 330:main_debug.c  **** 	
+ 331:main_debug.c  **** 	// Configure I/O pins
+ 332:main_debug.c  **** 	PORTB = 0;	// Reset all outputs. Force PWM output (PB0) to 0
+  34               		.loc 1 332 0
+  35 0010 18BA      		out 0x18,__zero_reg__
+ 333:main_debug.c  **** 	DDRB   = (1 << PIN_PWM_OUT) | (1 << PIN_DEBUG);	// PWM output (OC0A pin) [AW] and debug (PB5)
+  36               		.loc 1 333 0
+  37 0012 91E2      		ldi r25,lo8(33)
+  38 0014 97BB      		out 0x17,r25
+ 334:main_debug.c  **** 	PORTB  = 0;  // [AW] Disable Pull-ups - external HW debounce
+  39               		.loc 1 334 0
+  40 0016 18BA      		out 0x18,__zero_reg__
+ 335:main_debug.c  **** 
+ 336:main_debug.c  **** 	// Disable unused modules to save power
+ 337:main_debug.c  **** 	PRR = (1<<PRTIM1) | (1<<PRUSI) | (1<<PRADC);
+  41               		.loc 1 337 0
+  42 0018 9BE0      		ldi r25,lo8(11)
+  43 001a 90BD      		out 0x20,r25
+ 338:main_debug.c  **** 	ACSR = (1<<ACD);
+  44               		.loc 1 338 0
+  45 001c 90E8      		ldi r25,lo8(-128)
+  46 001e 98B9      		out 0x8,r25
+ 339:main_debug.c  **** 
+ 340:main_debug.c  **** 	// Configure pin change interrupt
+ 341:main_debug.c  **** 	MCUCR = (1 << ISC01) | (0 << ISC00);         // [AW] Set INT0 for falling edge detection
+  47               		.loc 1 341 0
+  48 0020 85BF      		out 0x35,r24
+ 342:main_debug.c  **** 	GIMSK = (1 << INT0) | (1 << PCIE);           // [AW] Added INT0
+  49               		.loc 1 342 0
+  50 0022 80E6      		ldi r24,lo8(96)
+  51 0024 8BBF      		out 0x3b,r24
+ 343:main_debug.c  **** 	PCMSK = (1 << PIN_DIAL) | (1 << PIN_PULSE);
+  52               		.loc 1 343 0
+  53 0026 86E0      		ldi r24,lo8(6)
+  54 0028 85BB      		out 0x15,r24
+ 344:main_debug.c  **** 
+ 345:main_debug.c  **** 	// Initialize (global) dial status structure (sDS)
+ 346:main_debug.c  **** 	sDS.iDialedDigit = DIGIT_OFF;
+  55               		.loc 1 346 0
+  56 002a 8FEF      		ldi r24,lo8(-1)
+  57 002c 8093 0000 		sts sDS,r24
+ 347:main_debug.c  **** 
+ 348:main_debug.c  **** 	// Variables to detect special functions (SF)
+ 349:main_debug.c  **** 	// SF dialed by holding rotor for few seconds (beep to indicate that SF activated) before releasin
+ 350:main_debug.c  **** 	// SF defined as: 1:*; 2:#; 3-9: speed dial; 0: program speed dial number
+ 351:main_debug.c  **** 	sDS.bSF_Selected = false;	// Special Function selected
+  58               		.loc 1 351 0
+  59 0030 1092 0000 		sts sDS+1,__zero_reg__
+ 352:main_debug.c  **** 
+ 353:main_debug.c  **** 	// Speed dial stuff
+ 354:main_debug.c  **** 	sDS.iSpeedDialDigitIndex = -1;	// Speed dial digit index
+  60               		.loc 1 354 0
+  61 0034 8093 0000 		sts sDS+2,r24
+ 355:main_debug.c  **** 	sDS.iSpeedDialIndex = -1; // Speed dial digi index (in the SD array)	
+  62               		.loc 1 355 0
+  63 0038 8093 0000 		sts sDS+3,r24
+  64               	.LVL0:
+  65 003c 80E0      		ldi r24,0
+  66 003e 90E0      		ldi r25,0
+  67               	.LBB6:
+ 356:main_debug.c  **** 	for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)	// Clear selected SD array
+ 357:main_debug.c  **** 	{
+ 358:main_debug.c  **** 		sDS.arSpeedDial[i] = DIGIT_OFF;
+  68               		.loc 1 358 0
+  69 0040 2FEF      		ldi r18,lo8(-1)
+  70               	.LVL1:
+  71               	.L3:
+  72               		.loc 1 358 0 is_stmt 0 discriminator 2
+  73 0042 FC01      		movw r30,r24
+  74 0044 E050      		subi r30,lo8(-(sDS))
+  75 0046 F040      		sbci r31,hi8(-(sDS))
+  76 0048 2483      		std Z+4,r18
+  77               	.LVL2:
+  78 004a 0196      		adiw r24,1
+  79               	.LVL3:
+ 356:main_debug.c  **** 	for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)	// Clear selected SD array
+  80               		.loc 1 356 0 is_stmt 1 discriminator 2
+  81 004c 8E31      		cpi r24,30
+  82 004e 9105      		cpc r25,__zero_reg__
+  83 0050 01F4      		brne .L3
+  84               	.LBE6:
+ 359:main_debug.c  **** 	}
+ 360:main_debug.c  **** 
+ 361:main_debug.c  **** 	// Interrupts enabled
+ 362:main_debug.c  **** 	sei();                     	     
+  85               		.loc 1 362 0
+  86               	/* #APP */
+  87               	 ;  362 "main_debug.c" 1
+  88 0052 7894      		sei
+  89               	 ;  0 "" 2
+  90               	/* #NOAPP */
+  91 0054 0895      		ret
+  92               		.cfi_endproc
+  93               	.LFE8:
+  95               	.global	EnablePWM
+  97               	EnablePWM:
+  98               	.LFB10:
+ 363:main_debug.c  **** }
+ 364:main_debug.c  **** 
+ 365:main_debug.c  **** 
+ 366:main_debug.c  **** // Generate DTMF tone, duration x ms
+ 367:main_debug.c  **** void GenerateDigit (signed char scDigit, unsigned int uiDuarationMS)
+ 368:main_debug.c  **** {
+ 369:main_debug.c  **** 	if (scDigit >= 0 && scDigit <= DIGIT_POUND)
+ 370:main_debug.c  **** 	{
+ 371:main_debug.c  **** 		// Standard digits 0-9, *, #
+ 372:main_debug.c  **** 		cSWa = auc_frequency[scDigit][0];  
+ 373:main_debug.c  **** 		cSWb = auc_frequency[scDigit][1]; 
+ 374:main_debug.c  **** 		EnablePWM();
+ 375:main_debug.c  **** 
+ 376:main_debug.c  **** 		// Wait x ms
+ 377:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 378:main_debug.c  **** 	} 
+ 379:main_debug.c  **** 	else if (scDigit==DIGIT_BEEP)
+ 380:main_debug.c  **** 	{
+ 381:main_debug.c  **** 		// Beep ~1000Hz (66)
+ 382:main_debug.c  **** 		cSWa = 66;  
+ 383:main_debug.c  **** 		cSWb = 0;
+ 384:main_debug.c  **** 		EnablePWM();
+ 385:main_debug.c  **** 
+ 386:main_debug.c  **** 		// Wait x ms
+ 387:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 388:main_debug.c  **** 	}
+ 389:main_debug.c  **** 	else if (scDigit==DIGIT_BEEP_LOW)
+ 390:main_debug.c  **** 	{
+ 391:main_debug.c  **** 		// Beep ~500Hz (33)
+ 392:main_debug.c  **** 		cSWa = 33;  
+ 393:main_debug.c  **** 		cSWb = 0;
+ 394:main_debug.c  **** 		EnablePWM();
+ 395:main_debug.c  **** 
+ 396:main_debug.c  **** 		// Wait x ms
+ 397:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 398:main_debug.c  **** 	}
+ 399:main_debug.c  **** 	else if (scDigit==DIGIT_TUNE_ASC)
+ 400:main_debug.c  **** 	{
+ 401:main_debug.c  **** 		cSWa = 34;	// C=523.25Hz  
+ 402:main_debug.c  **** 		cSWb = 0;
+ 403:main_debug.c  **** 		EnablePWM();
+ 404:main_debug.c  **** 		
+ 405:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 406:main_debug.c  **** 		cSWa = 43;	// E=659.26Hz
+ 407:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 408:main_debug.c  **** 		cSWa = 51;	// G=784Hz
+ 409:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 410:main_debug.c  **** 	}
+ 411:main_debug.c  **** 	else if (scDigit==DIGIT_TUNE_DESC)
+ 412:main_debug.c  **** 	{
+ 413:main_debug.c  **** 		cSWa = 51;	// G=784Hz
+ 414:main_debug.c  **** 		cSWb = 0;
+ 415:main_debug.c  **** 		EnablePWM();
+ 416:main_debug.c  **** 
+ 417:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 418:main_debug.c  **** 		cSWa = 43;	// E=659.26Hz
+ 419:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 420:main_debug.c  **** 		cSWa = 34;	// C=523.25Hz  
+ 421:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 422:main_debug.c  **** 	}
+ 423:main_debug.c  **** 
+ 424:main_debug.c  **** 
+ 425:main_debug.c  **** 	// Stop DTMF transmitting
+ 426:main_debug.c  **** 	// Disable PWM output (compare match mode 0) and force it to 0
+ 427:main_debug.c  **** 	cbi(TCCR0A, COM0A1);
+ 428:main_debug.c  **** 	cbi(TCCR0A, COM0A0);
+ 429:main_debug.c  **** 	cbi(PORTB, PIN_PWM_OUT);
+ 430:main_debug.c  **** 	cSWa = 0;
+ 431:main_debug.c  **** 	cSWb = 0;
+ 432:main_debug.c  **** }
+ 433:main_debug.c  **** 
+ 434:main_debug.c  **** 
+ 435:main_debug.c  **** // Enable PWM output by configuring compare match mode - non inverting PWM
+ 436:main_debug.c  **** void EnablePWM (void)
+ 437:main_debug.c  **** {
+  99               		.loc 1 437 0
+ 100               		.cfi_startproc
+ 101               	/* prologue: function */
+ 102               	/* frame size = 0 */
+ 103               	/* stack size = 0 */
+ 104               	.L__stack_usage = 0
+ 438:main_debug.c  **** 	sbi(TCCR0A, COM0A1);
+ 105               		.loc 1 438 0
+ 106 0056 8AB5      		in r24,0x2a
+ 107 0058 8068      		ori r24,lo8(-128)
+ 108 005a 8ABD      		out 0x2a,r24
+ 439:main_debug.c  **** 	cbi(TCCR0A, COM0A0);
+ 109               		.loc 1 439 0
+ 110 005c 8AB5      		in r24,0x2a
+ 111 005e 8F7B      		andi r24,lo8(-65)
+ 112 0060 8ABD      		out 0x2a,r24
+ 113 0062 0895      		ret
+ 114               		.cfi_endproc
+ 115               	.LFE10:
+ 117               	.global	SleepMS
+ 119               	SleepMS:
+ 120               	.LFB11:
+ 440:main_debug.c  **** }
+ 441:main_debug.c  **** 
+ 442:main_debug.c  **** 
+ 443:main_debug.c  **** // Wait x ms
+ 444:main_debug.c  **** void SleepMS(unsigned int uiMsec)
+ 445:main_debug.c  **** {	
+ 121               		.loc 1 445 0
+ 122               		.cfi_startproc
+ 123               	.LVL4:
+ 124               	/* prologue: function */
+ 125               	/* frame size = 0 */
+ 126               	/* stack size = 0 */
+ 127               	.L__stack_usage = 0
+ 446:main_debug.c  **** 	ulDelayCounter = 0;
+ 128               		.loc 1 446 0
+ 129 0064 1092 0000 		sts ulDelayCounter,__zero_reg__
+ 130 0068 1092 0000 		sts ulDelayCounter+1,__zero_reg__
+ 131 006c 1092 0000 		sts ulDelayCounter+2,__zero_reg__
+ 132 0070 1092 0000 		sts ulDelayCounter+3,__zero_reg__
+ 447:main_debug.c  **** 	
+ 448:main_debug.c  **** 	set_sleep_mode(SLEEP_MODE_IDLE);		
+ 133               		.loc 1 448 0
+ 134 0074 25B7      		in r18,0x35
+ 135 0076 277E      		andi r18,lo8(-25)
+ 136 0078 25BF      		out 0x35,r18
+ 449:main_debug.c  **** 	while(ulDelayCounter <= uiMsec * T0_OVERFLOW_PER_MS)
+ 137               		.loc 1 449 0
+ 138 007a AC01      		movw r20,r24
+ 139 007c 4295      		swap r20
+ 140 007e 5295      		swap r21
+ 141 0080 507F      		andi r21,0xf0
+ 142 0082 5427      		eor r21,r20
+ 143 0084 407F      		andi r20,0xf0
+ 144 0086 5427      		eor r21,r20
+ 145 0088 481B      		sub r20,r24
+ 146 008a 590B      		sbc r21,r25
+ 147 008c 60E0      		ldi r22,0
+ 148 008e 70E0      		ldi r23,0
+ 149 0090 8091 0000 		lds r24,ulDelayCounter
+ 150 0094 9091 0000 		lds r25,ulDelayCounter+1
+ 151 0098 A091 0000 		lds r26,ulDelayCounter+2
+ 152 009c B091 0000 		lds r27,ulDelayCounter+3
+ 153               	.LVL5:
+ 154 00a0 4817      		cp r20,r24
+ 155 00a2 5907      		cpc r21,r25
+ 156 00a4 6A07      		cpc r22,r26
+ 157 00a6 7B07      		cpc r23,r27
+ 158 00a8 00F0      		brlo .L5
+ 159               	.L7:
+ 450:main_debug.c  **** 	{
+ 451:main_debug.c  **** 		sleep_mode();
+ 160               		.loc 1 451 0
+ 161 00aa 85B7      		in r24,0x35
+ 162 00ac 8062      		ori r24,lo8(32)
+ 163 00ae 85BF      		out 0x35,r24
+ 164               	/* #APP */
+ 165               	 ;  451 "main_debug.c" 1
+ 166 00b0 8895      		sleep
+ 167               		
+ 168               	 ;  0 "" 2
+ 169               	/* #NOAPP */
+ 170 00b2 85B7      		in r24,0x35
+ 171 00b4 8F7D      		andi r24,lo8(-33)
+ 172 00b6 85BF      		out 0x35,r24
+ 449:main_debug.c  **** 	while(ulDelayCounter <= uiMsec * T0_OVERFLOW_PER_MS)
+ 173               		.loc 1 449 0
+ 174 00b8 8091 0000 		lds r24,ulDelayCounter
+ 175 00bc 9091 0000 		lds r25,ulDelayCounter+1
+ 176 00c0 A091 0000 		lds r26,ulDelayCounter+2
+ 177 00c4 B091 0000 		lds r27,ulDelayCounter+3
+ 178 00c8 4817      		cp r20,r24
+ 179 00ca 5907      		cpc r21,r25
+ 180 00cc 6A07      		cpc r22,r26
+ 181 00ce 7B07      		cpc r23,r27
+ 182 00d0 00F4      		brsh .L7
+ 183               	.L5:
+ 184 00d2 0895      		ret
+ 185               		.cfi_endproc
+ 186               	.LFE11:
+ 188               	.global	GenerateDigit
+ 190               	GenerateDigit:
+ 191               	.LFB9:
+ 368:main_debug.c  **** {
+ 192               		.loc 1 368 0
+ 193               		.cfi_startproc
+ 194               	.LVL6:
+ 195 00d4 CF93      		push r28
+ 196               	.LCFI0:
+ 197               		.cfi_def_cfa_offset 3
+ 198               		.cfi_offset 28, -2
+ 199 00d6 DF93      		push r29
+ 200               	.LCFI1:
+ 201               		.cfi_def_cfa_offset 4
+ 202               		.cfi_offset 29, -3
+ 203               	/* prologue: function */
+ 204               	/* frame size = 0 */
+ 205               	/* stack size = 2 */
+ 206               	.L__stack_usage = 2
+ 207 00d8 EB01      		movw r28,r22
+ 369:main_debug.c  **** 	if (scDigit >= 0 && scDigit <= DIGIT_POUND)
+ 208               		.loc 1 369 0
+ 209 00da 8C30      		cpi r24,lo8(12)
+ 210 00dc 00F4      		brsh .L9
+ 372:main_debug.c  **** 		cSWa = auc_frequency[scDigit][0];  
+ 211               		.loc 1 372 0
+ 212 00de E82F      		mov r30,r24
+ 213 00e0 EE0F      		lsl r30
+ 214 00e2 FF0B      		sbc r31,r31
+ 215 00e4 E050      		subi r30,lo8(-(auc_frequency))
+ 216 00e6 F040      		sbci r31,hi8(-(auc_frequency))
+ 217 00e8 8081      		ld r24,Z
+ 218               	.LVL7:
+ 219 00ea 8093 0000 		sts cSWa,r24
+ 373:main_debug.c  **** 		cSWb = auc_frequency[scDigit][1]; 
+ 220               		.loc 1 373 0
+ 221 00ee 8181      		ldd r24,Z+1
+ 222 00f0 8093 0000 		sts cSWb,r24
+ 374:main_debug.c  **** 		EnablePWM();
+ 223               		.loc 1 374 0
+ 224 00f4 00D0      		rcall EnablePWM
+ 225               	.LVL8:
+ 377:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 226               		.loc 1 377 0
+ 227 00f6 CE01      		movw r24,r28
+ 228 00f8 00D0      		rcall SleepMS
+ 229               	.LVL9:
+ 230 00fa 00C0      		rjmp .L10
+ 231               	.LVL10:
+ 232               	.L9:
+ 379:main_debug.c  **** 	else if (scDigit==DIGIT_BEEP)
+ 233               		.loc 1 379 0
+ 234 00fc 863F      		cpi r24,lo8(-10)
+ 235 00fe 01F4      		brne .L11
+ 382:main_debug.c  **** 		cSWa = 66;  
+ 236               		.loc 1 382 0
+ 237 0100 82E4      		ldi r24,lo8(66)
+ 238               	.LVL11:
+ 239 0102 8093 0000 		sts cSWa,r24
+ 383:main_debug.c  **** 		cSWb = 0;
+ 240               		.loc 1 383 0
+ 241 0106 1092 0000 		sts cSWb,__zero_reg__
+ 384:main_debug.c  **** 		EnablePWM();
+ 242               		.loc 1 384 0
+ 243 010a 00D0      		rcall EnablePWM
+ 244               	.LVL12:
+ 387:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 245               		.loc 1 387 0
+ 246 010c CE01      		movw r24,r28
+ 247 010e 00D0      		rcall SleepMS
+ 248               	.LVL13:
+ 249 0110 00C0      		rjmp .L10
+ 250               	.LVL14:
+ 251               	.L11:
+ 389:main_debug.c  **** 	else if (scDigit==DIGIT_BEEP_LOW)
+ 252               		.loc 1 389 0
+ 253 0112 833F      		cpi r24,lo8(-13)
+ 254 0114 01F4      		brne .L12
+ 392:main_debug.c  **** 		cSWa = 33;  
+ 255               		.loc 1 392 0
+ 256 0116 81E2      		ldi r24,lo8(33)
+ 257               	.LVL15:
+ 258 0118 8093 0000 		sts cSWa,r24
+ 393:main_debug.c  **** 		cSWb = 0;
+ 259               		.loc 1 393 0
+ 260 011c 1092 0000 		sts cSWb,__zero_reg__
+ 394:main_debug.c  **** 		EnablePWM();
+ 261               		.loc 1 394 0
+ 262 0120 00D0      		rcall EnablePWM
+ 263               	.LVL16:
+ 397:main_debug.c  **** 		SleepMS(uiDuarationMS);
+ 264               		.loc 1 397 0
+ 265 0122 CE01      		movw r24,r28
+ 266 0124 00D0      		rcall SleepMS
+ 267               	.LVL17:
+ 268 0126 00C0      		rjmp .L10
+ 269               	.LVL18:
+ 270               	.L12:
+ 399:main_debug.c  **** 	else if (scDigit==DIGIT_TUNE_ASC)
+ 271               		.loc 1 399 0
+ 272 0128 853F      		cpi r24,lo8(-11)
+ 273 012a 01F4      		brne .L13
+ 401:main_debug.c  **** 		cSWa = 34;	// C=523.25Hz  
+ 274               		.loc 1 401 0
+ 275 012c 82E2      		ldi r24,lo8(34)
+ 276               	.LVL19:
+ 277 012e 8093 0000 		sts cSWa,r24
+ 402:main_debug.c  **** 		cSWb = 0;
+ 278               		.loc 1 402 0
+ 279 0132 1092 0000 		sts cSWb,__zero_reg__
+ 403:main_debug.c  **** 		EnablePWM();
+ 280               		.loc 1 403 0
+ 281 0136 00D0      		rcall EnablePWM
+ 282               	.LVL20:
+ 405:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 283               		.loc 1 405 0
+ 284 0138 CE01      		movw r24,r28
+ 285 013a 63E0      		ldi r22,lo8(3)
+ 286 013c 70E0      		ldi r23,0
+ 287 013e 00D0      		rcall __udivmodhi4
+ 288 0140 EB01      		movw r28,r22
+ 289               	.LVL21:
+ 290 0142 CB01      		movw r24,r22
+ 291 0144 00D0      		rcall SleepMS
+ 292               	.LVL22:
+ 406:main_debug.c  **** 		cSWa = 43;	// E=659.26Hz
+ 293               		.loc 1 406 0
+ 294 0146 8BE2      		ldi r24,lo8(43)
+ 295 0148 8093 0000 		sts cSWa,r24
+ 407:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 296               		.loc 1 407 0
+ 297 014c CE01      		movw r24,r28
+ 298 014e 00D0      		rcall SleepMS
+ 299               	.LVL23:
+ 408:main_debug.c  **** 		cSWa = 51;	// G=784Hz
+ 300               		.loc 1 408 0
+ 301 0150 83E3      		ldi r24,lo8(51)
+ 302 0152 8093 0000 		sts cSWa,r24
+ 409:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 303               		.loc 1 409 0
+ 304 0156 CE01      		movw r24,r28
+ 305 0158 00D0      		rcall SleepMS
+ 306               	.LVL24:
+ 307 015a 00C0      		rjmp .L10
+ 308               	.LVL25:
+ 309               	.L13:
+ 411:main_debug.c  **** 	else if (scDigit==DIGIT_TUNE_DESC)
+ 310               		.loc 1 411 0
+ 311 015c 843F      		cpi r24,lo8(-12)
+ 312 015e 01F4      		brne .L10
+ 413:main_debug.c  **** 		cSWa = 51;	// G=784Hz
+ 313               		.loc 1 413 0
+ 314 0160 83E3      		ldi r24,lo8(51)
+ 315               	.LVL26:
+ 316 0162 8093 0000 		sts cSWa,r24
+ 414:main_debug.c  **** 		cSWb = 0;
+ 317               		.loc 1 414 0
+ 318 0166 1092 0000 		sts cSWb,__zero_reg__
+ 415:main_debug.c  **** 		EnablePWM();
+ 319               		.loc 1 415 0
+ 320 016a 00D0      		rcall EnablePWM
+ 321               	.LVL27:
+ 417:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 322               		.loc 1 417 0
+ 323 016c CE01      		movw r24,r28
+ 324 016e 63E0      		ldi r22,lo8(3)
+ 325 0170 70E0      		ldi r23,0
+ 326 0172 00D0      		rcall __udivmodhi4
+ 327 0174 EB01      		movw r28,r22
+ 328               	.LVL28:
+ 329 0176 CB01      		movw r24,r22
+ 330 0178 00D0      		rcall SleepMS
+ 331               	.LVL29:
+ 418:main_debug.c  **** 		cSWa = 43;	// E=659.26Hz
+ 332               		.loc 1 418 0
+ 333 017a 8BE2      		ldi r24,lo8(43)
+ 334 017c 8093 0000 		sts cSWa,r24
+ 419:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 335               		.loc 1 419 0
+ 336 0180 CE01      		movw r24,r28
+ 337 0182 00D0      		rcall SleepMS
+ 338               	.LVL30:
+ 420:main_debug.c  **** 		cSWa = 34;	// C=523.25Hz  
+ 339               		.loc 1 420 0
+ 340 0184 82E2      		ldi r24,lo8(34)
+ 341 0186 8093 0000 		sts cSWa,r24
+ 421:main_debug.c  **** 		SleepMS(uiDuarationMS/3);
+ 342               		.loc 1 421 0
+ 343 018a CE01      		movw r24,r28
+ 344 018c 00D0      		rcall SleepMS
+ 345               	.LVL31:
+ 346               	.L10:
+ 427:main_debug.c  **** 	cbi(TCCR0A, COM0A1);
+ 347               		.loc 1 427 0
+ 348 018e 8AB5      		in r24,0x2a
+ 349 0190 8F77      		andi r24,lo8(127)
+ 350 0192 8ABD      		out 0x2a,r24
+ 428:main_debug.c  **** 	cbi(TCCR0A, COM0A0);
+ 351               		.loc 1 428 0
+ 352 0194 8AB5      		in r24,0x2a
+ 353 0196 8F7B      		andi r24,lo8(-65)
+ 354 0198 8ABD      		out 0x2a,r24
+ 429:main_debug.c  **** 	cbi(PORTB, PIN_PWM_OUT);
+ 355               		.loc 1 429 0
+ 356 019a C098      		cbi 0x18,0
+ 430:main_debug.c  **** 	cSWa = 0;
+ 357               		.loc 1 430 0
+ 358 019c 1092 0000 		sts cSWa,__zero_reg__
+ 431:main_debug.c  **** 	cSWb = 0;
+ 359               		.loc 1 431 0
+ 360 01a0 1092 0000 		sts cSWb,__zero_reg__
+ 361               	/* epilogue start */
+ 432:main_debug.c  **** }
+ 362               		.loc 1 432 0
+ 363 01a4 DF91      		pop r29
+ 364 01a6 CF91      		pop r28
+ 365 01a8 0895      		ret
+ 366               		.cfi_endproc
+ 367               	.LFE9:
+ 369               	.global	Dial_SpeedDialNumber
+ 371               	Dial_SpeedDialNumber:
+ 372               	.LFB12:
+ 452:main_debug.c  **** 	}
+ 453:main_debug.c  **** }
+ 454:main_debug.c  **** 
+ 455:main_debug.c  **** 
+ 456:main_debug.c  **** // Dial speed dial number (it erases current SD number in the global structure)
+ 457:main_debug.c  **** void Dial_SpeedDialNumber (unsigned char iSpeedDialIndex)
+ 458:main_debug.c  **** {
+ 373               		.loc 1 458 0
+ 374               		.cfi_startproc
+ 375               	.LVL32:
+ 376 01aa CF93      		push r28
+ 377               	.LCFI2:
+ 378               		.cfi_def_cfa_offset 3
+ 379               		.cfi_offset 28, -2
+ 380 01ac DF93      		push r29
+ 381               	.LCFI3:
+ 382               		.cfi_def_cfa_offset 4
+ 383               		.cfi_offset 29, -3
+ 384               	/* prologue: function */
+ 385               	/* frame size = 0 */
+ 386               	/* stack size = 2 */
+ 387               	.L__stack_usage = 2
+ 459:main_debug.c  **** 	if ((iSpeedDialIndex >= 3) && (iSpeedDialIndex <= 9))
+ 388               		.loc 1 459 0
+ 389 01ae 9DEF      		ldi r25,lo8(-3)
+ 390 01b0 980F      		add r25,r24
+ 391 01b2 9730      		cpi r25,lo8(7)
+ 392 01b4 00F4      		brsh .L14
+ 460:main_debug.c  **** 	{
+ 461:main_debug.c  **** 		// If dialed index 3 => using array index 0
+ 462:main_debug.c  **** 		eeprom_read_block (&sDS.arSpeedDial, &EEPROM_SpeedDial[iSpeedDialIndex-3][0], SPEED_DIAL_SIZE);
+ 393               		.loc 1 462 0
+ 394 01b6 90E0      		ldi r25,0
+ 395 01b8 0397      		sbiw r24,3
+ 396               	.LVL33:
+ 397 01ba BC01      		movw r22,r24
+ 398 01bc 6295      		swap r22
+ 399 01be 7295      		swap r23
+ 400 01c0 707F      		andi r23,0xf0
+ 401 01c2 7627      		eor r23,r22
+ 402 01c4 607F      		andi r22,0xf0
+ 403 01c6 7627      		eor r23,r22
+ 404 01c8 681B      		sub r22,r24
+ 405 01ca 790B      		sbc r23,r25
+ 406 01cc 660F      		lsl r22
+ 407 01ce 771F      		rol r23
+ 408 01d0 6050      		subi r22,lo8(-(EEPROM_SpeedDial))
+ 409 01d2 7040      		sbci r23,hi8(-(EEPROM_SpeedDial))
+ 410 01d4 4EE1      		ldi r20,lo8(30)
+ 411 01d6 50E0      		ldi r21,0
+ 412 01d8 80E0      		ldi r24,lo8(sDS+4)
+ 413 01da 90E0      		ldi r25,hi8(sDS+4)
+ 414 01dc 00D0      		rcall __eerd_block_tn85
+ 415               	.LVL34:
+ 416 01de C0E0      		ldi r28,0
+ 417 01e0 D0E0      		ldi r29,0
+ 418               	.LVL35:
+ 419               	.L17:
+ 420               	.LBB7:
+ 463:main_debug.c  **** 
+ 464:main_debug.c  **** 		for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 465:main_debug.c  **** 		{
+ 466:main_debug.c  **** 			// Dial the number
+ 467:main_debug.c  **** 			// Skip dialing invalid digits
+ 468:main_debug.c  **** 			if ( (sDS.arSpeedDial[i] >= 0) && (sDS.arSpeedDial[i] <= DIGIT_POUND) )
+ 421               		.loc 1 468 0
+ 422 01e2 FE01      		movw r30,r28
+ 423 01e4 E050      		subi r30,lo8(-(sDS))
+ 424 01e6 F040      		sbci r31,hi8(-(sDS))
+ 425 01e8 2481      		ldd r18,Z+4
+ 426 01ea 2223      		tst r18
+ 427 01ec 04F0      		brlt .L16
+ 428               		.loc 1 468 0 is_stmt 0 discriminator 1
+ 429 01ee FE01      		movw r30,r28
+ 430 01f0 E050      		subi r30,lo8(-(sDS))
+ 431 01f2 F040      		sbci r31,hi8(-(sDS))
+ 432 01f4 2481      		ldd r18,Z+4
+ 433 01f6 2C30      		cpi r18,lo8(12)
+ 434 01f8 04F4      		brge .L16
+ 469:main_debug.c  **** 			{
+ 470:main_debug.c  **** 				GenerateDigit(sDS.arSpeedDial[i], DTMF_DURATION_MS);  
+ 435               		.loc 1 470 0 is_stmt 1
+ 436 01fa FE01      		movw r30,r28
+ 437 01fc E050      		subi r30,lo8(-(sDS))
+ 438 01fe F040      		sbci r31,hi8(-(sDS))
+ 439 0200 8481      		ldd r24,Z+4
+ 440 0202 64E6      		ldi r22,lo8(100)
+ 441 0204 70E0      		ldi r23,0
+ 442 0206 00D0      		rcall GenerateDigit
+ 443               	.LVL36:
+ 471:main_debug.c  **** 
+ 472:main_debug.c  **** 				// Pause between DTMF tones
+ 473:main_debug.c  **** 				SleepMS (DTMF_DURATION_MS);    
+ 444               		.loc 1 473 0
+ 445 0208 84E6      		ldi r24,lo8(100)
+ 446 020a 90E0      		ldi r25,0
+ 447 020c 00D0      		rcall SleepMS
+ 448               	.LVL37:
+ 449               	.L16:
+ 450 020e 2196      		adiw r28,1
+ 451               	.LVL38:
+ 464:main_debug.c  **** 		for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 452               		.loc 1 464 0
+ 453 0210 CE31      		cpi r28,30
+ 454 0212 D105      		cpc r29,__zero_reg__
+ 455 0214 01F4      		brne .L17
+ 456               	.LVL39:
+ 457               	.L14:
+ 458               	/* epilogue start */
+ 459               	.LBE7:
+ 474:main_debug.c  **** 			}
+ 475:main_debug.c  **** 		}
+ 476:main_debug.c  **** 	}
+ 477:main_debug.c  **** }
+ 460               		.loc 1 477 0
+ 461 0216 DF91      		pop r29
+ 462 0218 CF91      		pop r28
+ 463 021a 0895      		ret
+ 464               		.cfi_endproc
+ 465               	.LFE12:
+ 467               	.global	WriteCurrentSpeedDial
+ 469               	WriteCurrentSpeedDial:
+ 470               	.LFB13:
+ 478:main_debug.c  **** 
+ 479:main_debug.c  **** 
+ 480:main_debug.c  **** // Write current speed dial array (from the global strucutre) to the EEPROM
+ 481:main_debug.c  **** void WriteCurrentSpeedDial(unsigned char iSpeedDialIndex)
+ 482:main_debug.c  **** {
+ 471               		.loc 1 482 0
+ 472               		.cfi_startproc
+ 473               	.LVL40:
+ 474               	/* prologue: function */
+ 475               	/* frame size = 0 */
+ 476               	/* stack size = 0 */
+ 477               	.L__stack_usage = 0
+ 483:main_debug.c  **** 	if ((iSpeedDialIndex >= 3) && (iSpeedDialIndex <= 9))
+ 478               		.loc 1 483 0
+ 479 021c 9DEF      		ldi r25,lo8(-3)
+ 480 021e 980F      		add r25,r24
+ 481 0220 9730      		cpi r25,lo8(7)
+ 482 0222 00F4      		brsh .L18
+ 484:main_debug.c  **** 	{
+ 485:main_debug.c  **** 		// If dialed index 3 => using array index 0
+ 486:main_debug.c  **** 		eeprom_update_block (&sDS.arSpeedDial, &EEPROM_SpeedDial[iSpeedDialIndex-3][0], SPEED_DIAL_SIZE);
+ 483               		.loc 1 486 0
+ 484 0224 90E0      		ldi r25,0
+ 485 0226 0397      		sbiw r24,3
+ 486               	.LVL41:
+ 487 0228 BC01      		movw r22,r24
+ 488 022a 6295      		swap r22
+ 489 022c 7295      		swap r23
+ 490 022e 707F      		andi r23,0xf0
+ 491 0230 7627      		eor r23,r22
+ 492 0232 607F      		andi r22,0xf0
+ 493 0234 7627      		eor r23,r22
+ 494 0236 681B      		sub r22,r24
+ 495 0238 790B      		sbc r23,r25
+ 496 023a 660F      		lsl r22
+ 497 023c 771F      		rol r23
+ 498 023e 6050      		subi r22,lo8(-(EEPROM_SpeedDial))
+ 499 0240 7040      		sbci r23,hi8(-(EEPROM_SpeedDial))
+ 500 0242 4EE1      		ldi r20,lo8(30)
+ 501 0244 50E0      		ldi r21,0
+ 502 0246 80E0      		ldi r24,lo8(sDS+4)
+ 503 0248 90E0      		ldi r25,hi8(sDS+4)
+ 504 024a 00D0      		rcall __eeupd_block_tn85
+ 505               	.LVL42:
+ 506               	.L18:
+ 507 024c 0895      		ret
+ 508               		.cfi_endproc
+ 509               	.LFE13:
+ 511               	.global	ProcessDialedDigit
+ 513               	ProcessDialedDigit:
+ 514               	.LFB7:
+ 195:main_debug.c  **** {
+ 515               		.loc 1 195 0
+ 516               		.cfi_startproc
+ 517 024e CF93      		push r28
+ 518               	.LCFI4:
+ 519               		.cfi_def_cfa_offset 3
+ 520               		.cfi_offset 28, -2
+ 521 0250 DF93      		push r29
+ 522               	.LCFI5:
+ 523               		.cfi_def_cfa_offset 4
+ 524               		.cfi_offset 29, -3
+ 525               	/* prologue: function */
+ 526               	/* frame size = 0 */
+ 527               	/* stack size = 2 */
+ 528               	.L__stack_usage = 2
+ 197:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 1))				
+ 529               		.loc 1 197 0
+ 530 0252 8091 0000 		lds r24,sDS+1
+ 531 0256 8823      		tst r24
+ 532 0258 01F0      		breq .L21
+ 197:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 1))				
+ 533               		.loc 1 197 0 is_stmt 0 discriminator 1
+ 534 025a 8091 0000 		lds r24,sDS
+ 535 025e 8130      		cpi r24,lo8(1)
+ 536 0260 01F4      		brne .L21
+ 200:main_debug.c  **** 		sDS.iDialedDigit = DIGIT_STAR;
+ 537               		.loc 1 200 0 is_stmt 1
+ 538 0262 8AE0      		ldi r24,lo8(10)
+ 539 0264 8093 0000 		sts sDS,r24
+ 540 0268 00C0      		rjmp .L22
+ 541               	.L21:
+ 202:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit == 2))
+ 542               		.loc 1 202 0
+ 543 026a 8091 0000 		lds r24,sDS+1
+ 544 026e 8823      		tst r24
+ 545 0270 01F0      		breq .L22
+ 202:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit == 2))
+ 546               		.loc 1 202 0 is_stmt 0 discriminator 1
+ 547 0272 8091 0000 		lds r24,sDS
+ 548 0276 8230      		cpi r24,lo8(2)
+ 549 0278 01F4      		brne .L22
+ 205:main_debug.c  **** 		sDS.iDialedDigit = DIGIT_POUND;
+ 550               		.loc 1 205 0 is_stmt 1
+ 551 027a 8BE0      		ldi r24,lo8(11)
+ 552 027c 8093 0000 		sts sDS,r24
+ 553               	.L22:
+ 209:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 0))
+ 554               		.loc 1 209 0
+ 555 0280 8091 0000 		lds r24,sDS+1
+ 556 0284 8823      		tst r24
+ 557 0286 01F0      		breq .L23
+ 209:main_debug.c  **** 	if (sDS.bSF_Selected && (sDS.iDialedDigit == 0))
+ 558               		.loc 1 209 0 is_stmt 0 discriminator 1
+ 559 0288 8091 0000 		lds r24,sDS
+ 560 028c 8111      		cpse r24,__zero_reg__
+ 561 028e 00C0      		rjmp .L23
+ 214:main_debug.c  **** 		if (sDS.iSpeedDialDigitIndex < 0)
+ 562               		.loc 1 214 0 is_stmt 1
+ 563 0290 8091 0000 		lds r24,sDS+2
+ 564 0294 8823      		tst r24
+ 565 0296 04F4      		brge .L24
+ 217:main_debug.c  **** 			sDS.iSpeedDialDigitIndex = 0;
+ 566               		.loc 1 217 0
+ 567 0298 1092 0000 		sts sDS+2,__zero_reg__
+ 220:main_debug.c  **** 			sDS.iSpeedDialIndex = -1;
+ 568               		.loc 1 220 0
+ 569 029c 8FEF      		ldi r24,lo8(-1)
+ 570 029e 8093 0000 		sts sDS+3,r24
+ 571               	.LVL43:
+ 572 02a2 80E0      		ldi r24,0
+ 573 02a4 90E0      		ldi r25,0
+ 574               	.LBB8:
+ 225:main_debug.c  **** 				sDS.arSpeedDial[i] = DIGIT_OFF;
+ 575               		.loc 1 225 0
+ 576 02a6 2FEF      		ldi r18,lo8(-1)
+ 577               	.LVL44:
+ 578               	.L26:
+ 225:main_debug.c  **** 				sDS.arSpeedDial[i] = DIGIT_OFF;
+ 579               		.loc 1 225 0 is_stmt 0 discriminator 2
+ 580 02a8 FC01      		movw r30,r24
+ 581 02aa E050      		subi r30,lo8(-(sDS))
+ 582 02ac F040      		sbci r31,hi8(-(sDS))
+ 583 02ae 2483      		std Z+4,r18
+ 584               	.LVL45:
+ 585 02b0 0196      		adiw r24,1
+ 586               	.LVL46:
+ 223:main_debug.c  **** 			for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 587               		.loc 1 223 0 is_stmt 1 discriminator 2
+ 588 02b2 8E31      		cpi r24,30
+ 589 02b4 9105      		cpc r25,__zero_reg__
+ 590 02b6 01F4      		brne .L26
+ 591               	.LBE8:
+ 229:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_ASC, 700);
+ 592               		.loc 1 229 0
+ 593 02b8 6CEB      		ldi r22,lo8(-68)
+ 594 02ba 72E0      		ldi r23,lo8(2)
+ 595 02bc 85EF      		ldi r24,lo8(-11)
+ 596               	.LVL47:
+ 597 02be 00D0      		rcall GenerateDigit
+ 598               	.LVL48:
+ 230:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_DESC, 700);
+ 599               		.loc 1 230 0
+ 600 02c0 6CEB      		ldi r22,lo8(-68)
+ 601 02c2 72E0      		ldi r23,lo8(2)
+ 602 02c4 84EF      		ldi r24,lo8(-12)
+ 603 02c6 00D0      		rcall GenerateDigit
+ 604               	.LVL49:
+ 605 02c8 00C0      		rjmp .L20
+ 606               	.L24:
+ 237:main_debug.c  **** 			WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 607               		.loc 1 237 0
+ 608 02ca C0E0      		ldi r28,lo8(sDS+3)
+ 609 02cc D0E0      		ldi r29,hi8(sDS+3)
+ 610 02ce 8881      		ld r24,Y
+ 611 02d0 00D0      		rcall WriteCurrentSpeedDial
+ 612               	.LVL50:
+ 240:main_debug.c  **** 			sDS.iSpeedDialIndex = -1;
+ 613               		.loc 1 240 0
+ 614 02d2 8FEF      		ldi r24,lo8(-1)
+ 615 02d4 8883      		st Y,r24
+ 241:main_debug.c  **** 			sDS.iSpeedDialDigitIndex = -1;
+ 616               		.loc 1 241 0
+ 617 02d6 8093 0000 		sts sDS+2,r24
+ 244:main_debug.c  **** 			GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 618               		.loc 1 244 0
+ 619 02da 60E2      		ldi r22,lo8(32)
+ 620 02dc 73E0      		ldi r23,lo8(3)
+ 621 02de 84EF      		ldi r24,lo8(-12)
+ 622 02e0 00D0      		rcall GenerateDigit
+ 623               	.LVL51:
+ 624 02e2 00C0      		rjmp .L20
+ 625               	.L23:
+ 248:main_debug.c  **** 	else if (sDS.iSpeedDialDigitIndex >= 0)
+ 626               		.loc 1 248 0
+ 627 02e4 8091 0000 		lds r24,sDS+2
+ 628 02e8 8823      		tst r24
+ 629 02ea 04F4      		brge .+2
+ 630 02ec 00C0      		rjmp .L28
+ 251:main_debug.c  **** 		if (sDS.iSpeedDialIndex < 0)
+ 631               		.loc 1 251 0
+ 632 02ee 8091 0000 		lds r24,sDS+3
+ 633 02f2 8823      		tst r24
+ 634 02f4 04F4      		brge .L29
+ 254:main_debug.c  **** 			if ((sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 635               		.loc 1 254 0
+ 636 02f6 8091 0000 		lds r24,sDS
+ 637 02fa 8330      		cpi r24,lo8(3)
+ 638 02fc 04F0      		brlt .L30
+ 254:main_debug.c  **** 			if ((sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 639               		.loc 1 254 0 is_stmt 0 discriminator 1
+ 640 02fe 8091 0000 		lds r24,sDS
+ 641 0302 8A30      		cpi r24,lo8(10)
+ 642 0304 04F4      		brge .L30
+ 256:main_debug.c  **** 				sDS.iSpeedDialIndex = sDS.iDialedDigit;
+ 643               		.loc 1 256 0 is_stmt 1
+ 644 0306 8091 0000 		lds r24,sDS
+ 645 030a 8093 0000 		sts sDS+3,r24
+ 259:main_debug.c  **** 				GenerateDigit (DIGIT_TUNE_ASC, 800);
+ 646               		.loc 1 259 0
+ 647 030e 60E2      		ldi r22,lo8(32)
+ 648 0310 73E0      		ldi r23,lo8(3)
+ 649 0312 85EF      		ldi r24,lo8(-11)
+ 650 0314 00D0      		rcall GenerateDigit
+ 651               	.LVL52:
+ 652 0316 00C0      		rjmp .L20
+ 653               	.L30:
+ 266:main_debug.c  **** 				sDS.iSpeedDialIndex = -1;
+ 654               		.loc 1 266 0
+ 655 0318 8FEF      		ldi r24,lo8(-1)
+ 656 031a 8093 0000 		sts sDS+3,r24
+ 267:main_debug.c  **** 				sDS.iSpeedDialDigitIndex = -1;
+ 657               		.loc 1 267 0
+ 658 031e 8093 0000 		sts sDS+2,r24
+ 270:main_debug.c  **** 				GenerateDigit (DIGIT_BEEP, 1000);
+ 659               		.loc 1 270 0
+ 660 0322 68EE      		ldi r22,lo8(-24)
+ 661 0324 73E0      		ldi r23,lo8(3)
+ 662 0326 86EF      		ldi r24,lo8(-10)
+ 663 0328 00D0      		rcall GenerateDigit
+ 664               	.LVL53:
+ 665 032a 00C0      		rjmp .L20
+ 666               	.L29:
+ 278:main_debug.c  **** 			if (sDS.iSpeedDialDigitIndex >= SPEED_DIAL_SIZE)
+ 667               		.loc 1 278 0
+ 668 032c 8091 0000 		lds r24,sDS+2
+ 669 0330 8E31      		cpi r24,lo8(30)
+ 670 0332 04F0      		brlt .L31
+ 283:main_debug.c  **** 				WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 671               		.loc 1 283 0
+ 672 0334 C0E0      		ldi r28,lo8(sDS+3)
+ 673 0336 D0E0      		ldi r29,hi8(sDS+3)
+ 674 0338 8881      		ld r24,Y
+ 675 033a 00D0      		rcall WriteCurrentSpeedDial
+ 676               	.LVL54:
+ 286:main_debug.c  **** 				sDS.iSpeedDialIndex = -1;
+ 677               		.loc 1 286 0
+ 678 033c 8FEF      		ldi r24,lo8(-1)
+ 679 033e 8883      		st Y,r24
+ 287:main_debug.c  **** 				sDS.iSpeedDialDigitIndex = -1;
+ 680               		.loc 1 287 0
+ 681 0340 8093 0000 		sts sDS+2,r24
+ 290:main_debug.c  **** 				GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 682               		.loc 1 290 0
+ 683 0344 60E2      		ldi r22,lo8(32)
+ 684 0346 73E0      		ldi r23,lo8(3)
+ 685 0348 84EF      		ldi r24,lo8(-12)
+ 686 034a 00D0      		rcall GenerateDigit
+ 687               	.LVL55:
+ 688 034c 00C0      		rjmp .L20
+ 689               	.L31:
+ 295:main_debug.c  **** 				sDS.arSpeedDial[sDS.iSpeedDialDigitIndex] = sDS.iDialedDigit;
+ 690               		.loc 1 295 0
+ 691 034e C0E0      		ldi r28,lo8(sDS+2)
+ 692 0350 D0E0      		ldi r29,hi8(sDS+2)
+ 693 0352 E881      		ld r30,Y
+ 694 0354 FF27      		clr r31
+ 695 0356 E7FD      		sbrc r30,7
+ 696 0358 F095      		com r31
+ 697 035a 8091 0000 		lds r24,sDS
+ 698 035e E050      		subi r30,lo8(-(sDS))
+ 699 0360 F040      		sbci r31,hi8(-(sDS))
+ 700 0362 8483      		std Z+4,r24
+ 298:main_debug.c  **** 				GenerateDigit(DIGIT_BEEP_LOW, DTMF_DURATION_MS);
+ 701               		.loc 1 298 0
+ 702 0364 64E6      		ldi r22,lo8(100)
+ 703 0366 70E0      		ldi r23,0
+ 704 0368 83EF      		ldi r24,lo8(-13)
+ 705 036a 00D0      		rcall GenerateDigit
+ 706               	.LVL56:
+ 301:main_debug.c  **** 				sDS.iSpeedDialDigitIndex++;
+ 707               		.loc 1 301 0
+ 708 036c 8881      		ld r24,Y
+ 709 036e 8F5F      		subi r24,lo8(-(1))
+ 710 0370 8883      		st Y,r24
+ 711 0372 00C0      		rjmp .L20
+ 712               	.L28:
+ 306:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 713               		.loc 1 306 0
+ 714 0374 8091 0000 		lds r24,sDS+1
+ 715 0378 8823      		tst r24
+ 716 037a 01F0      		breq .L32
+ 306:main_debug.c  **** 	else if (sDS.bSF_Selected && (sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 717               		.loc 1 306 0 is_stmt 0 discriminator 1
+ 718 037c 8091 0000 		lds r24,sDS
+ 719 0380 8330      		cpi r24,lo8(3)
+ 720 0382 04F0      		brlt .L32
+ 721 0384 8091 0000 		lds r24,sDS
+ 722 0388 8A30      		cpi r24,lo8(10)
+ 723 038a 04F4      		brge .L32
+ 309:main_debug.c  **** 		Dial_SpeedDialNumber(sDS.iDialedDigit);
+ 724               		.loc 1 309 0 is_stmt 1
+ 725 038c 8091 0000 		lds r24,sDS
+ 726 0390 00D0      		rcall Dial_SpeedDialNumber
+ 727               	.LVL57:
+ 728 0392 00C0      		rjmp .L20
+ 729               	.L32:
+ 316:main_debug.c  **** 		GenerateDigit(sDS.iDialedDigit, DTMF_DURATION_MS);  
+ 730               		.loc 1 316 0
+ 731 0394 8091 0000 		lds r24,sDS
+ 732 0398 64E6      		ldi r22,lo8(100)
+ 733 039a 70E0      		ldi r23,0
+ 734 039c 00D0      		rcall GenerateDigit
+ 735               	.LVL58:
+ 736               	.L20:
+ 737               	/* epilogue start */
+ 318:main_debug.c  **** }
+ 738               		.loc 1 318 0
+ 739 039e DF91      		pop r29
+ 740 03a0 CF91      		pop r28
+ 741 03a2 0895      		ret
+ 742               		.cfi_endproc
+ 743               	.LFE7:
+ 745               	.global	main
+ 747               	main:
+ 748               	.LFB6:
+  65:main_debug.c  **** {
+ 749               		.loc 1 65 0
+ 750               		.cfi_startproc
+ 751 03a4 CF93      		push r28
+ 752               	.LCFI6:
+ 753               		.cfi_def_cfa_offset 3
+ 754               		.cfi_offset 28, -2
+ 755 03a6 DF93      		push r29
+ 756               	.LCFI7:
+ 757               		.cfi_def_cfa_offset 4
+ 758               		.cfi_offset 29, -3
+ 759 03a8 00D0      		rcall .
+ 760 03aa 1F92      		push __zero_reg__
+ 761               	.LCFI8:
+ 762               		.cfi_def_cfa_offset 7
+ 763 03ac CDB7      		in r28,__SP_L__
+ 764 03ae DEB7      		in r29,__SP_H__
+ 765               	.LCFI9:
+ 766               		.cfi_def_cfa_register 28
+ 767               	/* prologue: function */
+ 768               	/* frame size = 3 */
+ 769               	/* stack size = 5 */
+ 770               	.L__stack_usage = 5
+  68:main_debug.c  **** 	CLKPR = (1<<CLKPCE);	
+ 771               		.loc 1 68 0
+ 772 03b0 80E8      		ldi r24,lo8(-128)
+ 773 03b2 86BD      		out 0x26,r24
+  70:main_debug.c  **** 	CLKPR = 0x00;
+ 774               		.loc 1 70 0
+ 775 03b4 16BC      		out 0x26,__zero_reg__
+  73:main_debug.c  **** 	init();
+ 776               		.loc 1 73 0
+ 777 03b6 00D0      		rcall init
+ 778               	.LVL59:
+  76:main_debug.c  **** 	GenerateDigit(DIGIT_OFF, 0); 
+ 779               		.loc 1 76 0
+ 780 03b8 60E0      		ldi r22,0
+ 781 03ba 70E0      		ldi r23,0
+ 782 03bc 8FEF      		ldi r24,lo8(-1)
+ 783 03be 00D0      		rcall GenerateDigit
+ 784               	.LVL60:
+  79:main_debug.c  **** 	volatile bool bPrevDialState = true;		// Rotor status
+ 785               		.loc 1 79 0
+ 786 03c0 81E0      		ldi r24,lo8(1)
+ 787 03c2 8983      		std Y+1,r24
+  80:main_debug.c  **** 	volatile bool bPrevPulseState = false;	// Rotor pulse status
+ 788               		.loc 1 80 0
+ 789 03c4 1A82      		std Y+2,__zero_reg__
+  81:main_debug.c  **** 	volatile bool bCurPulseState = false;	// Rotor pulse status
+ 790               		.loc 1 81 0
+ 791 03c6 1B82      		std Y+3,__zero_reg__
+ 145:main_debug.c  **** 				sDS.bSF_Selected = false;
+ 792               		.loc 1 145 0
+ 793 03c8 0F2E      		mov __tmp_reg__,r31
+ 794 03ca F0E0      		ldi r31,lo8(sDS+1)
+ 795 03cc EF2E      		mov r14,r31
+ 796 03ce F0E0      		ldi r31,hi8(sDS+1)
+ 797 03d0 FF2E      		mov r15,r31
+ 798 03d2 F02D      		mov r31,__tmp_reg__
+ 146:main_debug.c  **** 				sDS.iDialedDigit = DIGIT_OFF;
+ 799               		.loc 1 146 0
+ 800 03d4 00E0      		ldi r16,lo8(sDS)
+ 801 03d6 10E0      		ldi r17,hi8(sDS)
+ 802 03d8 DD24      		clr r13
+ 803 03da DA94      		dec r13
+  97:main_debug.c  **** 				bSF_DetectionActive = true;
+ 804               		.loc 1 97 0
+ 805 03dc BB24      		clr r11
+ 806 03de B394      		inc r11
+ 807 03e0 CB2C      		mov r12,r11
+ 808               	.L44:
+  87:main_debug.c  **** 		bCurDialState = bit_is_set (PINB, PIN_DIAL);
+ 809               		.loc 1 87 0
+ 810 03e2 86B3      		in r24,0x16
+ 811 03e4 8695      		lsr r24
+ 812 03e6 8170      		andi r24,1
+ 813 03e8 8093 0000 		sts bCurDialState,r24
+  88:main_debug.c  **** 		bCurPulseState = bit_is_set (PINB, PIN_PULSE);
+ 814               		.loc 1 88 0
+ 815 03ec 86B3      		in r24,0x16
+ 816 03ee 82FB      		bst r24,2
+ 817 03f0 8827      		clr r24
+ 818 03f2 80F9      		bld r24,0
+ 819 03f4 8B83      		std Y+3,r24
+  91:main_debug.c  **** 		if (bPrevDialState != bCurDialState) 
+ 820               		.loc 1 91 0
+ 821 03f6 9981      		ldd r25,Y+1
+ 822 03f8 8091 0000 		lds r24,bCurDialState
+ 823 03fc 9817      		cp r25,r24
+ 824 03fe 01F0      		breq .L34
+  93:main_debug.c  **** 			if (!bCurDialState) 
+ 825               		.loc 1 93 0
+ 826 0400 8091 0000 		lds r24,bCurDialState
+ 827 0404 8111      		cpse r24,__zero_reg__
+ 828 0406 00C0      		rjmp .L35
+  97:main_debug.c  **** 				bSF_DetectionActive = true;
+ 829               		.loc 1 97 0
+ 830 0408 C092 0000 		sts bSF_DetectionActive,r12
+  98:main_debug.c  **** 				sDS.bSF_Selected = false;
+ 831               		.loc 1 98 0
+ 832 040c F701      		movw r30,r14
+ 833 040e 1082      		st Z,__zero_reg__
+ 100:main_debug.c  **** 				sDS.iDialedDigit = 0;
+ 834               		.loc 1 100 0
+ 835 0410 F801      		movw r30,r16
+ 836 0412 1082      		st Z,__zero_reg__
+ 101:main_debug.c  **** 				SleepMS (50);	// Delay 50ms
+ 837               		.loc 1 101 0
+ 838 0414 82E3      		ldi r24,lo8(50)
+ 839 0416 90E0      		ldi r25,0
+ 840 0418 00D0      		rcall SleepMS
+ 841               	.LVL61:
+ 102:main_debug.c  **** 				cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin at start of pulse count
+ 842               		.loc 1 102 0
+ 843 041a C598      		cbi 0x18,5
+ 844 041c 00C0      		rjmp .L36
+ 845               	.L35:
+ 107:main_debug.c  **** 				bSF_DetectionActive = false;
+ 846               		.loc 1 107 0
+ 847 041e 1092 0000 		sts bSF_DetectionActive,__zero_reg__
+ 110:main_debug.c  **** 				if ((sDS.iDialedDigit <= 0) || (sDS.iDialedDigit > 10))
+ 848               		.loc 1 110 0
+ 849 0422 F801      		movw r30,r16
+ 850 0424 8081      		ld r24,Z
+ 851 0426 1816      		cp __zero_reg__,r24
+ 852 0428 04F4      		brge .L37
+ 110:main_debug.c  **** 				if ((sDS.iDialedDigit <= 0) || (sDS.iDialedDigit > 10))
+ 853               		.loc 1 110 0 is_stmt 0 discriminator 1
+ 854 042a 8081      		ld r24,Z
+ 855 042c 8B30      		cpi r24,lo8(11)
+ 856 042e 04F0      		brlt .L38
+ 857               	.L37:
+ 113:main_debug.c  **** 					sDS.iDialedDigit = DIGIT_OFF;					
+ 858               		.loc 1 113 0 is_stmt 1
+ 859 0430 F801      		movw r30,r16
+ 860 0432 D082      		st Z,r13
+ 116:main_debug.c  **** 					SleepMS (50);	// Delay 50ms
+ 861               		.loc 1 116 0
+ 862 0434 82E3      		ldi r24,lo8(50)
+ 863 0436 90E0      		ldi r25,0
+ 864 0438 00D0      		rcall SleepMS
+ 865               	.LVL62:
+ 866 043a 00C0      		rjmp .L39
+ 867               	.L38:
+ 121:main_debug.c  **** 					if (sDS.iDialedDigit == 10)
+ 868               		.loc 1 121 0
+ 869 043c F801      		movw r30,r16
+ 870 043e 8081      		ld r24,Z
+ 871 0440 8A30      		cpi r24,lo8(10)
+ 872 0442 01F4      		brne .L40
+ 124:main_debug.c  **** 						sDS.iDialedDigit = 0;
+ 873               		.loc 1 124 0
+ 874 0444 1082      		st Z,__zero_reg__
+ 875               	.L40:
+ 127:main_debug.c  **** 					ProcessDialedDigit();
+ 876               		.loc 1 127 0
+ 877 0446 00D0      		rcall ProcessDialedDigit
+ 878               	.LVL63:
+ 879               	.L39:
+ 130:main_debug.c  **** 				sDS.bSF_Selected = false;	// Reset SF flag
+ 880               		.loc 1 130 0
+ 881 0448 F701      		movw r30,r14
+ 882 044a 1082      		st Z,__zero_reg__
+ 883 044c 00C0      		rjmp .L36
+ 884               	.L34:
+ 135:main_debug.c  **** 			if (!bCurDialState) 
+ 885               		.loc 1 135 0
+ 886 044e 8091 0000 		lds r24,bCurDialState
+ 887 0452 8823      		tst r24
+ 888 0454 01F0      		breq .L36
+ 144:main_debug.c  **** 				bSF_DetectionActive = false;
+ 889               		.loc 1 144 0
+ 890 0456 1092 0000 		sts bSF_DetectionActive,__zero_reg__
+ 145:main_debug.c  **** 				sDS.bSF_Selected = false;
+ 891               		.loc 1 145 0
+ 892 045a F701      		movw r30,r14
+ 893 045c 1082      		st Z,__zero_reg__
+ 146:main_debug.c  **** 				sDS.iDialedDigit = DIGIT_OFF;
+ 894               		.loc 1 146 0
+ 895 045e F801      		movw r30,r16
+ 896 0460 D082      		st Z,r13
+ 897               	.L36:
+ 150:main_debug.c  **** 		bPrevDialState = bCurDialState;
+ 898               		.loc 1 150 0
+ 899 0462 8091 0000 		lds r24,bCurDialState
+ 900 0466 8983      		std Y+1,r24
+ 151:main_debug.c  **** 		bPrevPulseState = bCurPulseState;
+ 901               		.loc 1 151 0
+ 902 0468 8B81      		ldd r24,Y+3
+ 903 046a 8A83      		std Y+2,r24
+ 154:main_debug.c  **** 		if (bSF_DetectionActive)
+ 904               		.loc 1 154 0
+ 905 046c 8091 0000 		lds r24,bSF_DetectionActive
+ 906 0470 8823      		tst r24
+ 907 0472 01F0      		breq .L41
+ 157:main_debug.c  **** 			set_sleep_mode(SLEEP_MODE_IDLE);		
+ 908               		.loc 1 157 0
+ 909 0474 85B7      		in r24,0x35
+ 910 0476 877E      		andi r24,lo8(-25)
+ 911 0478 85BF      		out 0x35,r24
+ 158:main_debug.c  **** 			sleep_mode();
+ 912               		.loc 1 158 0
+ 913 047a 85B7      		in r24,0x35
+ 914 047c 8062      		ori r24,lo8(32)
+ 915 047e 85BF      		out 0x35,r24
+ 916               	/* #APP */
+ 917               	 ;  158 "main_debug.c" 1
+ 918 0480 8895      		sleep
+ 919               		
+ 920               	 ;  0 "" 2
+ 921               	/* #NOAPP */
+ 922 0482 85B7      		in r24,0x35
+ 923 0484 8F7D      		andi r24,lo8(-33)
+ 924 0486 85BF      		out 0x35,r24
+ 161:main_debug.c  **** 			if (ulDelayCounter >= SF_DELAY_MS * T0_OVERFLOW_PER_MS)
+ 925               		.loc 1 161 0
+ 926 0488 8091 0000 		lds r24,ulDelayCounter
+ 927 048c 9091 0000 		lds r25,ulDelayCounter+1
+ 928 0490 A091 0000 		lds r26,ulDelayCounter+2
+ 929 0494 B091 0000 		lds r27,ulDelayCounter+3
+ 930 0498 8033      		cpi r24,48
+ 931 049a 9547      		sbci r25,117
+ 932 049c A105      		cpc r26,__zero_reg__
+ 933 049e B105      		cpc r27,__zero_reg__
+ 934 04a0 00F0      		brlo .L42
+ 164:main_debug.c  **** 				sDS.bSF_Selected = true;
+ 935               		.loc 1 164 0
+ 936 04a2 F701      		movw r30,r14
+ 937 04a4 B082      		st Z,r11
+ 165:main_debug.c  **** 				bSF_DetectionActive = false;
+ 938               		.loc 1 165 0
+ 939 04a6 1092 0000 		sts bSF_DetectionActive,__zero_reg__
+ 168:main_debug.c  **** 				GenerateDigit (DIGIT_BEEP, 200);
+ 940               		.loc 1 168 0
+ 941 04aa 68EC      		ldi r22,lo8(-56)
+ 942 04ac 70E0      		ldi r23,0
+ 943 04ae 86EF      		ldi r24,lo8(-10)
+ 944 04b0 00D0      		rcall GenerateDigit
+ 945               	.LVL64:
+ 946 04b2 00C0      		rjmp .L42
+ 947               	.L41:
+ 174:main_debug.c  **** 			set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+ 948               		.loc 1 174 0
+ 949 04b4 85B7      		in r24,0x35
+ 950 04b6 877E      		andi r24,lo8(-25)
+ 951 04b8 8061      		ori r24,lo8(16)
+ 952 04ba 85BF      		out 0x35,r24
+ 175:main_debug.c  **** 			sleep_mode();
+ 953               		.loc 1 175 0
+ 954 04bc 85B7      		in r24,0x35
+ 955 04be 8062      		ori r24,lo8(32)
+ 956 04c0 85BF      		out 0x35,r24
+ 957               	/* #APP */
+ 958               	 ;  175 "main_debug.c" 1
+ 959 04c2 8895      		sleep
+ 960               		
+ 961               	 ;  0 "" 2
+ 962               	/* #NOAPP */
+ 963 04c4 85B7      		in r24,0x35
+ 964 04c6 8F7D      		andi r24,lo8(-33)
+ 965 04c8 85BF      		out 0x35,r24
+ 966               	.L42:
+ 178:main_debug.c  **** 		if(bPulseDetected)			// [AW] toggle debug pin if pulse was detected this loop
+ 967               		.loc 1 178 0
+ 968 04ca 8091 0000 		lds r24,bPulseDetected
+ 969 04ce 8823      		tst r24
+ 970 04d0 01F4      		brne .+2
+ 971 04d2 00C0      		rjmp .L44
+ 180:main_debug.c  **** 			sbi(PORTB, PIN_DEBUG); 		// [AW] set debug pin high when pulse is detected
+ 972               		.loc 1 180 0
+ 973 04d4 C59A      		sbi 0x18,5
+ 181:main_debug.c  **** 			SleepMS (20);				// delay 50ms
+ 974               		.loc 1 181 0
+ 975 04d6 84E1      		ldi r24,lo8(20)
+ 976 04d8 90E0      		ldi r25,0
+ 977 04da 00D0      		rcall SleepMS
+ 978               	.LVL65:
+ 182:main_debug.c  **** 			cbi(PORTB, PIN_DEBUG);
+ 979               		.loc 1 182 0
+ 980 04dc C598      		cbi 0x18,5
+ 183:main_debug.c  **** 			bPulseDetected = false;
+ 981               		.loc 1 183 0
+ 982 04de 1092 0000 		sts bPulseDetected,__zero_reg__
+ 983 04e2 00C0      		rjmp .L44
+ 984               		.cfi_endproc
+ 985               	.LFE6:
+ 987               	.global	__vector_5
+ 989               	__vector_5:
+ 990               	.LFB14:
+ 487:main_debug.c  **** 	}
+ 488:main_debug.c  **** }
+ 489:main_debug.c  **** 
+ 490:main_debug.c  **** 
+ 491:main_debug.c  **** // Timer overflow interrupt service routine
+ 492:main_debug.c  **** TIMER_INTERRUPT_HANDLER(SIG_OVERFLOW0)
+ 493:main_debug.c  **** { 
+ 991               		.loc 1 493 0
+ 992               		.cfi_startproc
+ 993 04e4 1F92      		push r1
+ 994               	.LCFI10:
+ 995               		.cfi_def_cfa_offset 3
+ 996               		.cfi_offset 1, -2
+ 997 04e6 0F92      		push r0
+ 998               	.LCFI11:
+ 999               		.cfi_def_cfa_offset 4
+ 1000               		.cfi_offset 0, -3
+ 1001 04e8 0FB6      		in r0,__SREG__
+ 1002 04ea 0F92      		push r0
+ 1003 04ec 1124      		clr __zero_reg__
+ 1004 04ee 2F93      		push r18
+ 1005               	.LCFI12:
+ 1006               		.cfi_def_cfa_offset 5
+ 1007               		.cfi_offset 18, -4
+ 1008 04f0 3F93      		push r19
+ 1009               	.LCFI13:
+ 1010               		.cfi_def_cfa_offset 6
+ 1011               		.cfi_offset 19, -5
+ 1012 04f2 8F93      		push r24
+ 1013               	.LCFI14:
+ 1014               		.cfi_def_cfa_offset 7
+ 1015               		.cfi_offset 24, -6
+ 1016 04f4 9F93      		push r25
+ 1017               	.LCFI15:
+ 1018               		.cfi_def_cfa_offset 8
+ 1019               		.cfi_offset 25, -7
+ 1020 04f6 AF93      		push r26
+ 1021               	.LCFI16:
+ 1022               		.cfi_def_cfa_offset 9
+ 1023               		.cfi_offset 26, -8
+ 1024 04f8 BF93      		push r27
+ 1025               	.LCFI17:
+ 1026               		.cfi_def_cfa_offset 10
+ 1027               		.cfi_offset 27, -9
+ 1028 04fa EF93      		push r30
+ 1029               	.LCFI18:
+ 1030               		.cfi_def_cfa_offset 11
+ 1031               		.cfi_offset 30, -10
+ 1032 04fc FF93      		push r31
+ 1033               	.LCFI19:
+ 1034               		.cfi_def_cfa_offset 12
+ 1035               		.cfi_offset 31, -11
+ 1036               	/* prologue: Signal */
+ 1037               	/* frame size = 0 */
+ 1038               	/* stack size = 11 */
+ 1039               	.L__stack_usage = 11
+ 494:main_debug.c  **** 	unsigned char ucSinA;
+ 495:main_debug.c  **** 	unsigned char ucSinB;
+ 496:main_debug.c  **** 
+ 497:main_debug.c  **** 	// A component (high frequency) is always used
+ 498:main_debug.c  **** 	// move Pointer about step width ahead
+ 499:main_debug.c  **** 	iCurSinValA += cSWa;      
+ 1040               		.loc 1 499 0
+ 1041 04fe 2091 0000 		lds r18,cSWa
+ 1042 0502 8091 0000 		lds r24,iCurSinValA
+ 1043 0506 9091 0000 		lds r25,iCurSinValA+1
+ 1044 050a 820F      		add r24,r18
+ 1045 050c 911D      		adc r25,__zero_reg__
+ 1046 050e 9093 0000 		sts iCurSinValA+1,r25
+ 1047 0512 8093 0000 		sts iCurSinValA,r24
+ 500:main_debug.c  **** 	// normalize Temp-Pointer 
+ 501:main_debug.c  **** 	unsigned int i_TmpSinValA = (char)(((iCurSinValA + 4) >> 3) & (0x007F)); 
+ 1048               		.loc 1 501 0
+ 1049 0516 E091 0000 		lds r30,iCurSinValA
+ 1050 051a F091 0000 		lds r31,iCurSinValA+1
+ 1051               	.LVL66:
+ 1052 051e 3496      		adiw r30,4
+ 1053               	.LVL67:
+ 1054 0520 F695      		lsr r31
+ 1055 0522 E795      		ror r30
+ 1056 0524 F695      		lsr r31
+ 1057 0526 E795      		ror r30
+ 1058 0528 F695      		lsr r31
+ 1059 052a E795      		ror r30
+ 1060               	.LVL68:
+ 1061 052c EF77      		andi r30,127
+ 1062 052e FF27      		clr r31
+ 1063               	.LVL69:
+ 502:main_debug.c  **** 	ucSinA = auc_SinParam[i_TmpSinValA];
+ 1064               		.loc 1 502 0
+ 1065 0530 E050      		subi r30,lo8(-(auc_SinParam))
+ 1066 0532 F040      		sbci r31,hi8(-(auc_SinParam))
+ 1067               	.LVL70:
+ 1068 0534 2081      		ld r18,Z
+ 1069               	.LVL71:
+ 503:main_debug.c  **** 
+ 504:main_debug.c  **** 
+ 505:main_debug.c  **** 	//	B component (low frequency) is optional
+ 506:main_debug.c  **** 	if (cSWb > 0)
+ 1070               		.loc 1 506 0
+ 1071 0536 8091 0000 		lds r24,cSWb
+ 1072 053a 8823      		tst r24
+ 1073 053c 01F0      		breq .L48
+ 1074               	.LBB9:
+ 507:main_debug.c  **** 	{
+ 508:main_debug.c  **** 		// move Pointer about step width ahead
+ 509:main_debug.c  **** 		iCurSinValB += cSWb;	
+ 1075               		.loc 1 509 0
+ 1076 053e 3091 0000 		lds r19,cSWb
+ 1077 0542 8091 0000 		lds r24,iCurSinValB
+ 1078 0546 9091 0000 		lds r25,iCurSinValB+1
+ 1079 054a 830F      		add r24,r19
+ 1080 054c 911D      		adc r25,__zero_reg__
+ 1081 054e 9093 0000 		sts iCurSinValB+1,r25
+ 1082 0552 8093 0000 		sts iCurSinValB,r24
+ 510:main_debug.c  **** 		// normalize Temp-Pointer	
+ 511:main_debug.c  **** 		unsigned int i_TmpSinValB = (char)(((iCurSinValB + 4) >> 3) & (0x007F));		
+ 1083               		.loc 1 511 0
+ 1084 0556 E091 0000 		lds r30,iCurSinValB
+ 1085 055a F091 0000 		lds r31,iCurSinValB+1
+ 1086               	.LVL72:
+ 1087 055e 3496      		adiw r30,4
+ 1088               	.LVL73:
+ 1089 0560 F695      		lsr r31
+ 1090 0562 E795      		ror r30
+ 1091 0564 F695      		lsr r31
+ 1092 0566 E795      		ror r30
+ 1093 0568 F695      		lsr r31
+ 1094 056a E795      		ror r30
+ 1095               	.LVL74:
+ 1096 056c EF77      		andi r30,127
+ 1097 056e FF27      		clr r31
+ 1098               	.LVL75:
+ 512:main_debug.c  **** 		ucSinB = auc_SinParam[i_TmpSinValB];
+ 1099               		.loc 1 512 0
+ 1100 0570 E050      		subi r30,lo8(-(auc_SinParam))
+ 1101 0572 F040      		sbci r31,hi8(-(auc_SinParam))
+ 1102               	.LVL76:
+ 1103 0574 8081      		ld r24,Z
+ 1104               	.LVL77:
+ 1105               	.LBE9:
+ 1106 0576 00C0      		rjmp .L47
+ 1107               	.LVL78:
+ 1108               	.L48:
+ 513:main_debug.c  **** 	}
+ 514:main_debug.c  **** 	else
+ 515:main_debug.c  **** 	{
+ 516:main_debug.c  **** 		ucSinB = 0;
+ 1109               		.loc 1 516 0
+ 1110 0578 80E0      		ldi r24,0
+ 1111               	.LVL79:
+ 1112               	.L47:
+ 517:main_debug.c  **** 	}
+ 518:main_debug.c  **** 
+ 519:main_debug.c  **** 	// calculate PWM value: high frequency value + 3/4 low frequency value
+ 520:main_debug.c  **** 	OCR0A = (ucSinA + (ucSinB - (ucSinB >> 2)));
+ 1113               		.loc 1 520 0
+ 1114 057a 280F      		add r18,r24
+ 1115               	.LVL80:
+ 1116 057c 982F      		mov r25,r24
+ 1117 057e 9695      		lsr r25
+ 1118 0580 9695      		lsr r25
+ 1119 0582 822F      		mov r24,r18
+ 1120               	.LVL81:
+ 1121 0584 891B      		sub r24,r25
+ 1122 0586 89BD      		out 0x29,r24
+ 521:main_debug.c  **** 
+ 522:main_debug.c  **** 	ulDelayCounter++;
+ 1123               		.loc 1 522 0
+ 1124 0588 8091 0000 		lds r24,ulDelayCounter
+ 1125 058c 9091 0000 		lds r25,ulDelayCounter+1
+ 1126 0590 A091 0000 		lds r26,ulDelayCounter+2
+ 1127 0594 B091 0000 		lds r27,ulDelayCounter+3
+ 1128 0598 0196      		adiw r24,1
+ 1129 059a A11D      		adc r26,__zero_reg__
+ 1130 059c B11D      		adc r27,__zero_reg__
+ 1131 059e 8093 0000 		sts ulDelayCounter,r24
+ 1132 05a2 9093 0000 		sts ulDelayCounter+1,r25
+ 1133 05a6 A093 0000 		sts ulDelayCounter+2,r26
+ 1134 05aa B093 0000 		sts ulDelayCounter+3,r27
+ 1135               	/* epilogue start */
+ 523:main_debug.c  **** }
+ 1136               		.loc 1 523 0
+ 1137 05ae FF91      		pop r31
+ 1138 05b0 EF91      		pop r30
+ 1139 05b2 BF91      		pop r27
+ 1140 05b4 AF91      		pop r26
+ 1141 05b6 9F91      		pop r25
+ 1142 05b8 8F91      		pop r24
+ 1143 05ba 3F91      		pop r19
+ 1144 05bc 2F91      		pop r18
+ 1145 05be 0F90      		pop r0
+ 1146 05c0 0FBE      		out __SREG__,r0
+ 1147 05c2 0F90      		pop r0
+ 1148 05c4 1F90      		pop r1
+ 1149 05c6 1895      		reti
+ 1150               		.cfi_endproc
+ 1151               	.LFE14:
+ 1153               	.global	__vector_1
+ 1155               	__vector_1:
+ 1156               	.LFB15:
+ 524:main_debug.c  **** 
+ 525:main_debug.c  **** 
+ 526:main_debug.c  **** // [AW] Handler for external interrupt on INT0 (PB2, pin 7)
+ 527:main_debug.c  **** ISR(INT0_vect)
+ 528:main_debug.c  **** {
+ 1157               		.loc 1 528 0
+ 1158               		.cfi_startproc
+ 1159 05c8 1F92      		push r1
+ 1160               	.LCFI20:
+ 1161               		.cfi_def_cfa_offset 3
+ 1162               		.cfi_offset 1, -2
+ 1163 05ca 0F92      		push r0
+ 1164               	.LCFI21:
+ 1165               		.cfi_def_cfa_offset 4
+ 1166               		.cfi_offset 0, -3
+ 1167 05cc 0FB6      		in r0,__SREG__
+ 1168 05ce 0F92      		push r0
+ 1169 05d0 1124      		clr __zero_reg__
+ 1170 05d2 8F93      		push r24
+ 1171               	.LCFI22:
+ 1172               		.cfi_def_cfa_offset 5
+ 1173               		.cfi_offset 24, -4
+ 1174 05d4 EF93      		push r30
+ 1175               	.LCFI23:
+ 1176               		.cfi_def_cfa_offset 6
+ 1177               		.cfi_offset 30, -5
+ 1178 05d6 FF93      		push r31
+ 1179               	.LCFI24:
+ 1180               		.cfi_def_cfa_offset 7
+ 1181               		.cfi_offset 31, -6
+ 1182               	/* prologue: Signal */
+ 1183               	/* frame size = 0 */
+ 1184               	/* stack size = 6 */
+ 1185               	.L__stack_usage = 6
+ 529:main_debug.c  **** 	if (!bCurDialState)
+ 1186               		.loc 1 529 0
+ 1187 05d8 8091 0000 		lds r24,bCurDialState
+ 1188 05dc 8111      		cpse r24,__zero_reg__
+ 1189 05de 00C0      		rjmp .L49
+ 530:main_debug.c  **** 	{
+ 531:main_debug.c  **** 	    // Disabling SF detection
+ 532:main_debug.c  **** 		bSF_DetectionActive = false;
+ 1190               		.loc 1 532 0
+ 1191 05e0 1092 0000 		sts bSF_DetectionActive,__zero_reg__
+ 533:main_debug.c  **** 
+ 534:main_debug.c  **** 		// A pulse just started
+ 535:main_debug.c  **** 		bPulseDetected = true;			// [AW] Set flag to be handled by main() - never delay in interrupt vect
+ 1192               		.loc 1 535 0
+ 1193 05e4 81E0      		ldi r24,lo8(1)
+ 1194 05e6 8093 0000 		sts bPulseDetected,r24
+ 536:main_debug.c  **** 		sDS.iDialedDigit++;
+ 1195               		.loc 1 536 0
+ 1196 05ea E0E0      		ldi r30,lo8(sDS)
+ 1197 05ec F0E0      		ldi r31,hi8(sDS)
+ 1198 05ee 8081      		ld r24,Z
+ 1199 05f0 8F5F      		subi r24,lo8(-(1))
+ 1200 05f2 8083      		st Z,r24
+ 1201               	.L49:
+ 1202               	/* epilogue start */
+ 537:main_debug.c  **** 	}
+ 538:main_debug.c  **** }
+ 1203               		.loc 1 538 0
+ 1204 05f4 FF91      		pop r31
+ 1205 05f6 EF91      		pop r30
+ 1206 05f8 8F91      		pop r24
+ 1207 05fa 0F90      		pop r0
+ 1208 05fc 0FBE      		out __SREG__,r0
+ 1209 05fe 0F90      		pop r0
+ 1210 0600 1F90      		pop r1
+ 1211 0602 1895      		reti
+ 1212               		.cfi_endproc
+ 1213               	.LFE15:
+ 1215               	.global	__vector_2
+ 1217               	__vector_2:
+ 1218               	.LFB16:
+ 539:main_debug.c  **** 
+ 540:main_debug.c  **** // [AW] Interrupt handlers updated to new code convention
+ 541:main_debug.c  **** // Interrupt initiated by pin change on any enabled pin
+ 542:main_debug.c  **** ISR(PCINT0_vect)
+ 543:main_debug.c  **** {
+ 1219               		.loc 1 543 0
+ 1220               		.cfi_startproc
+ 1221 0604 1F92      		push r1
+ 1222               	.LCFI25:
+ 1223               		.cfi_def_cfa_offset 3
+ 1224               		.cfi_offset 1, -2
+ 1225 0606 0F92      		push r0
+ 1226               	.LCFI26:
+ 1227               		.cfi_def_cfa_offset 4
+ 1228               		.cfi_offset 0, -3
+ 1229 0608 0FB6      		in r0,__SREG__
+ 1230 060a 0F92      		push r0
+ 1231 060c 1124      		clr __zero_reg__
+ 1232 060e 8F93      		push r24
+ 1233               	.LCFI27:
+ 1234               		.cfi_def_cfa_offset 5
+ 1235               		.cfi_offset 24, -4
+ 1236               	/* prologue: Signal */
+ 1237               	/* frame size = 0 */
+ 1238               	/* stack size = 4 */
+ 1239               	.L__stack_usage = 4
+ 1240               	.LVL82:
+ 1241               	.LBB10:
+ 1242               	.LBB11:
+ 1243               		.file 2 "/usr/lib/avr/include/util/delay.h"
+   1:/usr/lib/avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/lib/avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/lib/avr/include/util/delay.h **** 
+   6:/usr/lib/avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/lib/avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/lib/avr/include/util/delay.h **** 
+   9:/usr/lib/avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/lib/avr/include/util/delay.h **** 
+  12:/usr/lib/avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/lib/avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/lib/avr/include/util/delay.h ****      distribution.
+  16:/usr/lib/avr/include/util/delay.h **** 
+  17:/usr/lib/avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/lib/avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/lib/avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/lib/avr/include/util/delay.h **** 
+  21:/usr/lib/avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/lib/avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/lib/avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/lib/avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/lib/avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/lib/avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/lib/avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/lib/avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/lib/avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/lib/avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/lib/avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/lib/avr/include/util/delay.h **** 
+  33:/usr/lib/avr/include/util/delay.h **** /* $Id: delay.h.in 2251 2011-09-14 08:20:33Z joerg_wunsch $ */
+  34:/usr/lib/avr/include/util/delay.h **** 
+  35:/usr/lib/avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/lib/avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/lib/avr/include/util/delay.h **** 
+  38:/usr/lib/avr/include/util/delay.h **** #ifndef __HAS_DELAY_CYCLES
+  39:/usr/lib/avr/include/util/delay.h **** #define __HAS_DELAY_CYCLES 1
+  40:/usr/lib/avr/include/util/delay.h **** #endif
+  41:/usr/lib/avr/include/util/delay.h **** 
+  42:/usr/lib/avr/include/util/delay.h **** #include <inttypes.h>
+  43:/usr/lib/avr/include/util/delay.h **** #include <util/delay_basic.h>
+  44:/usr/lib/avr/include/util/delay.h **** #include <math.h>
+  45:/usr/lib/avr/include/util/delay.h **** 
+  46:/usr/lib/avr/include/util/delay.h **** /** \file */
+  47:/usr/lib/avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  48:/usr/lib/avr/include/util/delay.h ****     \code
+  49:/usr/lib/avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  50:/usr/lib/avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  51:/usr/lib/avr/include/util/delay.h ****     #include <util/delay.h>
+  52:/usr/lib/avr/include/util/delay.h ****     \endcode
+  53:/usr/lib/avr/include/util/delay.h **** 
+  54:/usr/lib/avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  55:/usr/lib/avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  56:/usr/lib/avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  57:/usr/lib/avr/include/util/delay.h ****     used.
+  58:/usr/lib/avr/include/util/delay.h **** 
+  59:/usr/lib/avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  60:/usr/lib/avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  61:/usr/lib/avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  62:/usr/lib/avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  63:/usr/lib/avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  64:/usr/lib/avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  65:/usr/lib/avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  66:/usr/lib/avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  67:/usr/lib/avr/include/util/delay.h **** 
+  68:/usr/lib/avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  69:/usr/lib/avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  70:/usr/lib/avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  71:/usr/lib/avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  72:/usr/lib/avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  73:/usr/lib/avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  74:/usr/lib/avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  75:/usr/lib/avr/include/util/delay.h ****     routines linked into the application.
+  76:/usr/lib/avr/include/util/delay.h **** 
+  77:/usr/lib/avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  78:/usr/lib/avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  79:/usr/lib/avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  80:/usr/lib/avr/include/util/delay.h **** 
+  81:/usr/lib/avr/include/util/delay.h **** */
+  82:/usr/lib/avr/include/util/delay.h **** 
+  83:/usr/lib/avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  84:/usr/lib/avr/include/util/delay.h **** static inline void _delay_us(double __us) __attribute__((always_inline));
+  85:/usr/lib/avr/include/util/delay.h **** static inline void _delay_ms(double __ms) __attribute__((always_inline));
+  86:/usr/lib/avr/include/util/delay.h **** #endif
+  87:/usr/lib/avr/include/util/delay.h **** 
+  88:/usr/lib/avr/include/util/delay.h **** #ifndef F_CPU
+  89:/usr/lib/avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  90:/usr/lib/avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  91:/usr/lib/avr/include/util/delay.h **** # define F_CPU 1000000UL
+  92:/usr/lib/avr/include/util/delay.h **** #endif
+  93:/usr/lib/avr/include/util/delay.h **** 
+  94:/usr/lib/avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+  95:/usr/lib/avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+  96:/usr/lib/avr/include/util/delay.h **** #endif
+  97:/usr/lib/avr/include/util/delay.h **** 
+  98:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+  99:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 100:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 101:/usr/lib/avr/include/util/delay.h **** #  include <math.h>
+ 102:/usr/lib/avr/include/util/delay.h **** #endif
+ 103:/usr/lib/avr/include/util/delay.h **** 
+ 104:/usr/lib/avr/include/util/delay.h **** /**
+ 105:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 106:/usr/lib/avr/include/util/delay.h **** 
+ 107:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 108:/usr/lib/avr/include/util/delay.h **** 
+ 109:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 110:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 111:/usr/lib/avr/include/util/delay.h **** 
+ 112:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 113:/usr/lib/avr/include/util/delay.h **** 
+ 114:/usr/lib/avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 115:/usr/lib/avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 116:/usr/lib/avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 117:/usr/lib/avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 118:/usr/lib/avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 119:/usr/lib/avr/include/util/delay.h **** 
+ 120:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 121:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 122:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 123:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 124:/usr/lib/avr/include/util/delay.h **** 
+ 125:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 126:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 127:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 128:/usr/lib/avr/include/util/delay.h **** 
+ 129:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 130:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 131:/usr/lib/avr/include/util/delay.h **** 
+ 132:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_ms(double __ms) with 
+ 133:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible. 
+ 134:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 135:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 136:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 137:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 138:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 139:/usr/lib/avr/include/util/delay.h **** 
+ 140:/usr/lib/avr/include/util/delay.h ****  */
+ 141:/usr/lib/avr/include/util/delay.h **** void
+ 142:/usr/lib/avr/include/util/delay.h **** _delay_ms(double __ms)
+ 143:/usr/lib/avr/include/util/delay.h **** {
+ 144:/usr/lib/avr/include/util/delay.h **** 	uint16_t __ticks;
+ 145:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 146:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 147:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 148:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 149:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 150:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 151:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 152:/usr/lib/avr/include/util/delay.h **** 
+ 153:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 154:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 155:/usr/lib/avr/include/util/delay.h **** 
+ 156:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 157:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 158:/usr/lib/avr/include/util/delay.h **** 
+ 159:/usr/lib/avr/include/util/delay.h **** 	#else
+ 160:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 161:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 162:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 163:/usr/lib/avr/include/util/delay.h **** 
+ 164:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 165:/usr/lib/avr/include/util/delay.h **** 
+ 166:/usr/lib/avr/include/util/delay.h **** #else
+ 167:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 4e3) * __ms;
+ 168:/usr/lib/avr/include/util/delay.h **** 	if (__tmp < 1.0)
+ 169:/usr/lib/avr/include/util/delay.h **** 		__ticks = 1;
+ 170:/usr/lib/avr/include/util/delay.h **** 	else if (__tmp > 65535)
+ 171:/usr/lib/avr/include/util/delay.h **** 	{
+ 172:/usr/lib/avr/include/util/delay.h **** 		//	__ticks = requested delay in 1/10 ms
+ 173:/usr/lib/avr/include/util/delay.h **** 		__ticks = (uint16_t) (__ms * 10.0);
+ 174:/usr/lib/avr/include/util/delay.h **** 		while(__ticks)
+ 175:/usr/lib/avr/include/util/delay.h **** 		{
+ 176:/usr/lib/avr/include/util/delay.h **** 			// wait 1/10 ms
+ 177:/usr/lib/avr/include/util/delay.h **** 			_delay_loop_2(((F_CPU) / 4e3) / 10);
+ 178:/usr/lib/avr/include/util/delay.h **** 			__ticks --;
+ 179:/usr/lib/avr/include/util/delay.h **** 		}
+ 180:/usr/lib/avr/include/util/delay.h **** 		return;
+ 181:/usr/lib/avr/include/util/delay.h **** 	}
+ 182:/usr/lib/avr/include/util/delay.h **** 	else
+ 183:/usr/lib/avr/include/util/delay.h **** 		__ticks = (uint16_t)__tmp;
+ 184:/usr/lib/avr/include/util/delay.h **** 	_delay_loop_2(__ticks);
+ 185:/usr/lib/avr/include/util/delay.h **** #endif
+ 186:/usr/lib/avr/include/util/delay.h **** }
+ 187:/usr/lib/avr/include/util/delay.h **** 
+ 188:/usr/lib/avr/include/util/delay.h **** /**
+ 189:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 190:/usr/lib/avr/include/util/delay.h **** 
+ 191:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __us microseconds, using _delay_loop_1().
+ 192:/usr/lib/avr/include/util/delay.h **** 
+ 193:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 194:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 195:/usr/lib/avr/include/util/delay.h **** 
+ 196:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 768 us / F_CPU in MHz.
+ 197:/usr/lib/avr/include/util/delay.h **** 
+ 198:/usr/lib/avr/include/util/delay.h ****    If the user requests a delay greater than the maximal possible one,
+ 199:/usr/lib/avr/include/util/delay.h ****    _delay_us() will automatically call _delay_ms() instead.  The user
+ 200:/usr/lib/avr/include/util/delay.h ****    will not be informed about this case.
+ 201:/usr/lib/avr/include/util/delay.h **** 
+ 202:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 203:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 us/ F_CPU in MHz. For
+ 204:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflow results in
+ 205:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0us.
+ 206:/usr/lib/avr/include/util/delay.h ****   
+ 207:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 208:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 209:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 210:/usr/lib/avr/include/util/delay.h **** 
+ 211:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 212:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 213:/usr/lib/avr/include/util/delay.h ****  
+ 214:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_us(double __us) with 
+ 215:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible.
+ 216:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 217:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 218:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 219:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 220:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 221:/usr/lib/avr/include/util/delay.h **** 
+ 222:/usr/lib/avr/include/util/delay.h ****  */
+ 223:/usr/lib/avr/include/util/delay.h **** void
+ 224:/usr/lib/avr/include/util/delay.h **** _delay_us(double __us)
+ 225:/usr/lib/avr/include/util/delay.h **** {
+ 226:/usr/lib/avr/include/util/delay.h **** 	uint8_t __ticks;
+ 227:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 228:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 229:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 230:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 231:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 232:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 233:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e6) * __us;
+ 234:/usr/lib/avr/include/util/delay.h **** 
+ 235:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 236:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 237:/usr/lib/avr/include/util/delay.h **** 
+ 238:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 239:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 240:/usr/lib/avr/include/util/delay.h **** 
+ 241:/usr/lib/avr/include/util/delay.h **** 	#else
+ 242:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 243:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 244:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 245:/usr/lib/avr/include/util/delay.h **** 
+ 246:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 1244               		.loc 2 246 0
+ 1245 0610 85E8      		ldi r24,lo8(-123)
+ 1246 0612 8A95      		1: dec r24
+ 1247 0614 01F4      		brne 1b
+ 1248 0616 0000      		nop
+ 1249               	/* epilogue start */
+ 1250               	.LBE11:
+ 1251               	.LBE10:
+ 544:main_debug.c  **** 	// Do nothing, just wake up MCU
+ 545:main_debug.c  **** 	_delay_us(100);
+ 546:main_debug.c  **** }
+ 1252               		.loc 1 546 0
+ 1253 0618 8F91      		pop r24
+ 1254 061a 0F90      		pop r0
+ 1255 061c 0FBE      		out __SREG__,r0
+ 1256 061e 0F90      		pop r0
+ 1257 0620 1F90      		pop r1
+ 1258 0622 1895      		reti
+ 1259               		.cfi_endproc
+ 1260               	.LFE16:
+ 1262               	.global	__vector_default
+ 1264               	__vector_default:
+ 1265               	.LFB17:
+ 547:main_debug.c  **** 
+ 548:main_debug.c  **** // [AW] Handler for any unspecified 'bad' interrupts
+ 549:main_debug.c  **** ISR(BADISR_vect)
+ 550:main_debug.c  **** {
+ 1266               		.loc 1 550 0
+ 1267               		.cfi_startproc
+ 1268 0624 1F92      		push r1
+ 1269               	.LCFI28:
+ 1270               		.cfi_def_cfa_offset 3
+ 1271               		.cfi_offset 1, -2
+ 1272 0626 0F92      		push r0
+ 1273               	.LCFI29:
+ 1274               		.cfi_def_cfa_offset 4
+ 1275               		.cfi_offset 0, -3
+ 1276 0628 0FB6      		in r0,__SREG__
+ 1277 062a 0F92      		push r0
+ 1278 062c 1124      		clr __zero_reg__
+ 1279 062e 8F93      		push r24
+ 1280               	.LCFI30:
+ 1281               		.cfi_def_cfa_offset 5
+ 1282               		.cfi_offset 24, -4
+ 1283               	/* prologue: Signal */
+ 1284               	/* frame size = 0 */
+ 1285               	/* stack size = 4 */
+ 1286               	.L__stack_usage = 4
+ 1287               	.LVL83:
+ 1288               	.LBB12:
+ 1289               	.LBB13:
+ 1290               		.loc 2 246 0
+ 1291 0630 85E8      		ldi r24,lo8(-123)
+ 1292 0632 8A95      		1: dec r24
+ 1293 0634 01F4      		brne 1b
+ 1294 0636 0000      		nop
+ 1295               	/* epilogue start */
+ 1296               	.LBE13:
+ 1297               	.LBE12:
+ 551:main_debug.c  **** 	// Do nothing, just wake up MCU
+ 552:main_debug.c  **** 	_delay_us(100);
+ 553:main_debug.c  **** }...
+ 1298               		.loc 1 553 0
+ 1299 0638 8F91      		pop r24
+ 1300 063a 0F90      		pop r0
+ 1301 063c 0FBE      		out __SREG__,r0
+ 1302 063e 0F90      		pop r0
+ 1303 0640 1F90      		pop r1
+ 1304 0642 1895      		reti
+ 1305               		.cfi_endproc
+ 1306               	.LFE17:
+ 1308               		.comm	sDS,34,1
+ 1309               	.global	bPulseDetected
+ 1310               		.section .bss
+ 1313               	bPulseDetected:
+ 1314 0000 00        		.zero	1
+ 1315               	.global	bCurDialState
+ 1316               		.data
+ 1319               	bCurDialState:
+ 1320 0000 01        		.byte	1
+ 1321               	.global	bSF_DetectionActive
+ 1322               		.section .bss
+ 1325               	bSF_DetectionActive:
+ 1326 0001 00        		.zero	1
+ 1327               	.global	ulDelayCounter
+ 1330               	ulDelayCounter:
+ 1331 0002 0000 0000 		.zero	4
+ 1332               	.global	iCurSinValB
+ 1335               	iCurSinValB:
+ 1336 0006 0000      		.zero	2
+ 1337               	.global	iCurSinValA
+ 1340               	iCurSinValA:
+ 1341 0008 0000      		.zero	2
+ 1342               	.global	cSWb
+ 1345               	cSWb:
+ 1346 000a 00        		.zero	1
+ 1347               	.global	cSWa
+ 1350               	cSWa:
+ 1351 000b 00        		.zero	1
+ 1352               	.global	EEPROM_SpeedDial
+ 1353               		.section	.eeprom,"aw",@progbits
+ 1356               	EEPROM_SpeedDial:
+ 1357 0000 FF        		.byte	-1
+ 1358 0001 FF        		.byte	-1
+ 1359 0002 FF        		.byte	-1
+ 1360 0003 FF        		.byte	-1
+ 1361 0004 FF        		.byte	-1
+ 1362 0005 FF        		.byte	-1
+ 1363 0006 FF        		.byte	-1
+ 1364 0007 FF        		.byte	-1
+ 1365 0008 FF        		.byte	-1
+ 1366 0009 FF        		.byte	-1
+ 1367 000a FF        		.byte	-1
+ 1368 000b FF        		.byte	-1
+ 1369 000c FF        		.byte	-1
+ 1370 000d FF        		.byte	-1
+ 1371 000e FF        		.byte	-1
+ 1372 000f FF        		.byte	-1
+ 1373 0010 FF        		.byte	-1
+ 1374 0011 FF        		.byte	-1
+ 1375 0012 FF        		.byte	-1
+ 1376 0013 FF        		.byte	-1
+ 1377 0014 FF        		.byte	-1
+ 1378 0015 FF        		.byte	-1
+ 1379 0016 FF        		.byte	-1
+ 1380 0017 FF        		.byte	-1
+ 1381 0018 FF        		.byte	-1
+ 1382 0019 FF        		.byte	-1
+ 1383 001a FF        		.byte	-1
+ 1384 001b FF        		.byte	-1
+ 1385 001c FF        		.byte	-1
+ 1386 001d FF        		.byte	-1
+ 1387 001e FF        		.byte	-1
+ 1388 001f FF        		.byte	-1
+ 1389 0020 FF        		.byte	-1
+ 1390 0021 FF        		.byte	-1
+ 1391 0022 FF        		.byte	-1
+ 1392 0023 FF        		.byte	-1
+ 1393 0024 FF        		.byte	-1
+ 1394 0025 FF        		.byte	-1
+ 1395 0026 FF        		.byte	-1
+ 1396 0027 FF        		.byte	-1
+ 1397 0028 FF        		.byte	-1
+ 1398 0029 FF        		.byte	-1
+ 1399 002a FF        		.byte	-1
+ 1400 002b FF        		.byte	-1
+ 1401 002c FF        		.byte	-1
+ 1402 002d FF        		.byte	-1
+ 1403 002e FF        		.byte	-1
+ 1404 002f FF        		.byte	-1
+ 1405 0030 FF        		.byte	-1
+ 1406 0031 FF        		.byte	-1
+ 1407 0032 FF        		.byte	-1
+ 1408 0033 FF        		.byte	-1
+ 1409 0034 FF        		.byte	-1
+ 1410 0035 FF        		.byte	-1
+ 1411 0036 FF        		.byte	-1
+ 1412 0037 FF        		.byte	-1
+ 1413 0038 FF        		.byte	-1
+ 1414 0039 FF        		.byte	-1
+ 1415 003a FF        		.byte	-1
+ 1416 003b FF        		.byte	-1
+ 1417 003c FF        		.byte	-1
+ 1418 003d FF        		.byte	-1
+ 1419 003e FF        		.byte	-1
+ 1420 003f FF        		.byte	-1
+ 1421 0040 FF        		.byte	-1
+ 1422 0041 FF        		.byte	-1
+ 1423 0042 FF        		.byte	-1
+ 1424 0043 FF        		.byte	-1
+ 1425 0044 FF        		.byte	-1
+ 1426 0045 FF        		.byte	-1
+ 1427 0046 FF        		.byte	-1
+ 1428 0047 FF        		.byte	-1
+ 1429 0048 FF        		.byte	-1
+ 1430 0049 FF        		.byte	-1
+ 1431 004a FF        		.byte	-1
+ 1432 004b FF        		.byte	-1
+ 1433 004c FF        		.byte	-1
+ 1434 004d FF        		.byte	-1
+ 1435 004e FF        		.byte	-1
+ 1436 004f FF        		.byte	-1
+ 1437 0050 FF        		.byte	-1
+ 1438 0051 FF        		.byte	-1
+ 1439 0052 FF        		.byte	-1
+ 1440 0053 FF        		.byte	-1
+ 1441 0054 FF        		.byte	-1
+ 1442 0055 FF        		.byte	-1
+ 1443 0056 FF        		.byte	-1
+ 1444 0057 FF        		.byte	-1
+ 1445 0058 FF        		.byte	-1
+ 1446 0059 FF        		.byte	-1
+ 1447 005a FF        		.byte	-1
+ 1448 005b FF        		.byte	-1
+ 1449 005c FF        		.byte	-1
+ 1450 005d FF        		.byte	-1
+ 1451 005e FF        		.byte	-1
+ 1452 005f FF        		.byte	-1
+ 1453 0060 FF        		.byte	-1
+ 1454 0061 FF        		.byte	-1
+ 1455 0062 FF        		.byte	-1
+ 1456 0063 FF        		.byte	-1
+ 1457 0064 FF        		.byte	-1
+ 1458 0065 FF        		.byte	-1
+ 1459 0066 FF        		.byte	-1
+ 1460 0067 FF        		.byte	-1
+ 1461 0068 FF        		.byte	-1
+ 1462 0069 FF        		.byte	-1
+ 1463 006a FF        		.byte	-1
+ 1464 006b FF        		.byte	-1
+ 1465 006c FF        		.byte	-1
+ 1466 006d FF        		.byte	-1
+ 1467 006e FF        		.byte	-1
+ 1468 006f FF        		.byte	-1
+ 1469 0070 FF        		.byte	-1
+ 1470 0071 FF        		.byte	-1
+ 1471 0072 FF        		.byte	-1
+ 1472 0073 FF        		.byte	-1
+ 1473 0074 FF        		.byte	-1
+ 1474 0075 FF        		.byte	-1
+ 1475 0076 FF        		.byte	-1
+ 1476 0077 FF        		.byte	-1
+ 1477 0078 FF        		.byte	-1
+ 1478 0079 FF        		.byte	-1
+ 1479 007a FF        		.byte	-1
+ 1480 007b FF        		.byte	-1
+ 1481 007c FF        		.byte	-1
+ 1482 007d FF        		.byte	-1
+ 1483 007e FF        		.byte	-1
+ 1484 007f FF        		.byte	-1
+ 1485 0080 FF        		.byte	-1
+ 1486 0081 FF        		.byte	-1
+ 1487 0082 FF        		.byte	-1
+ 1488 0083 FF        		.byte	-1
+ 1489 0084 FF        		.byte	-1
+ 1490 0085 FF        		.byte	-1
+ 1491 0086 FF        		.byte	-1
+ 1492 0087 FF        		.byte	-1
+ 1493 0088 FF        		.byte	-1
+ 1494 0089 FF        		.byte	-1
+ 1495 008a FF        		.byte	-1
+ 1496 008b FF        		.byte	-1
+ 1497 008c FF        		.byte	-1
+ 1498 008d FF        		.byte	-1
+ 1499 008e FF        		.byte	-1
+ 1500 008f FF        		.byte	-1
+ 1501 0090 FF        		.byte	-1
+ 1502 0091 FF        		.byte	-1
+ 1503 0092 FF        		.byte	-1
+ 1504 0093 FF        		.byte	-1
+ 1505 0094 FF        		.byte	-1
+ 1506 0095 FF        		.byte	-1
+ 1507 0096 FF        		.byte	-1
+ 1508 0097 FF        		.byte	-1
+ 1509 0098 FF        		.byte	-1
+ 1510 0099 FF        		.byte	-1
+ 1511 009a FF        		.byte	-1
+ 1512 009b FF        		.byte	-1
+ 1513 009c FF        		.byte	-1
+ 1514 009d FF        		.byte	-1
+ 1515 009e FF        		.byte	-1
+ 1516 009f FF        		.byte	-1
+ 1517 00a0 FF        		.byte	-1
+ 1518 00a1 FF        		.byte	-1
+ 1519 00a2 FF        		.byte	-1
+ 1520 00a3 FF        		.byte	-1
+ 1521 00a4 FF        		.byte	-1
+ 1522 00a5 FF        		.byte	-1
+ 1523 00a6 FF        		.byte	-1
+ 1524 00a7 FF        		.byte	-1
+ 1525 00a8 FF        		.byte	-1
+ 1526 00a9 FF        		.byte	-1
+ 1527 00aa FF        		.byte	-1
+ 1528 00ab FF        		.byte	-1
+ 1529 00ac FF        		.byte	-1
+ 1530 00ad FF        		.byte	-1
+ 1531 00ae FF        		.byte	-1
+ 1532 00af FF        		.byte	-1
+ 1533 00b0 FF        		.byte	-1
+ 1534 00b1 FF        		.byte	-1
+ 1535 00b2 FF        		.byte	-1
+ 1536 00b3 FF        		.byte	-1
+ 1537 00b4 FF        		.byte	-1
+ 1538 00b5 FF        		.byte	-1
+ 1539 00b6 FF        		.byte	-1
+ 1540 00b7 FF        		.byte	-1
+ 1541 00b8 FF        		.byte	-1
+ 1542 00b9 FF        		.byte	-1
+ 1543 00ba FF        		.byte	-1
+ 1544 00bb FF        		.byte	-1
+ 1545 00bc FF        		.byte	-1
+ 1546 00bd FF        		.byte	-1
+ 1547 00be FF        		.byte	-1
+ 1548 00bf FF        		.byte	-1
+ 1549 00c0 FF        		.byte	-1
+ 1550 00c1 FF        		.byte	-1
+ 1551 00c2 FF        		.byte	-1
+ 1552 00c3 FF        		.byte	-1
+ 1553 00c4 FF        		.byte	-1
+ 1554 00c5 FF        		.byte	-1
+ 1555 00c6 FF        		.byte	-1
+ 1556 00c7 FF        		.byte	-1
+ 1557 00c8 FF        		.byte	-1
+ 1558 00c9 FF        		.byte	-1
+ 1559 00ca FF        		.byte	-1
+ 1560 00cb FF        		.byte	-1
+ 1561 00cc FF        		.byte	-1
+ 1562 00cd FF        		.byte	-1
+ 1563 00ce FF        		.byte	-1
+ 1564 00cf FF        		.byte	-1
+ 1565 00d0 FF        		.byte	-1
+ 1566 00d1 FF        		.byte	-1
+ 1567               	.global	auc_frequency
+ 1568               		.section	.rodata
+ 1571               	auc_frequency:
+ 1572 0000 57        		.byte	87
+ 1573 0001 3D        		.byte	61
+ 1574 0002 4F        		.byte	79
+ 1575 0003 2E        		.byte	46
+ 1576 0004 57        		.byte	87
+ 1577 0005 2E        		.byte	46
+ 1578 0006 60        		.byte	96
+ 1579 0007 2E        		.byte	46
+ 1580 0008 4F        		.byte	79
+ 1581 0009 32        		.byte	50
+ 1582 000a 57        		.byte	87
+ 1583 000b 32        		.byte	50
+ 1584 000c 60        		.byte	96
+ 1585 000d 32        		.byte	50
+ 1586 000e 4F        		.byte	79
+ 1587 000f 38        		.byte	56
+ 1588 0010 57        		.byte	87
+ 1589 0011 38        		.byte	56
+ 1590 0012 60        		.byte	96
+ 1591 0013 38        		.byte	56
+ 1592 0014 4F        		.byte	79
+ 1593 0015 3D        		.byte	61
+ 1594 0016 60        		.byte	96
+ 1595 0017 3D        		.byte	61
+ 1596               	.global	auc_SinParam
+ 1599               	auc_SinParam:
+ 1600 0018 40        		.byte	64
+ 1601 0019 43        		.byte	67
+ 1602 001a 46        		.byte	70
+ 1603 001b 49        		.byte	73
+ 1604 001c 4C        		.byte	76
+ 1605 001d 4F        		.byte	79
+ 1606 001e 52        		.byte	82
+ 1607 001f 55        		.byte	85
+ 1608 0020 58        		.byte	88
+ 1609 0021 5B        		.byte	91
+ 1610 0022 5E        		.byte	94
+ 1611 0023 60        		.byte	96
+ 1612 0024 63        		.byte	99
+ 1613 0025 66        		.byte	102
+ 1614 0026 68        		.byte	104
+ 1615 0027 6A        		.byte	106
+ 1616 0028 6D        		.byte	109
+ 1617 0029 6F        		.byte	111
+ 1618 002a 71        		.byte	113
+ 1619 002b 73        		.byte	115
+ 1620 002c 75        		.byte	117
+ 1621 002d 76        		.byte	118
+ 1622 002e 78        		.byte	120
+ 1623 002f 79        		.byte	121
+ 1624 0030 7B        		.byte	123
+ 1625 0031 7C        		.byte	124
+ 1626 0032 7D        		.byte	125
+ 1627 0033 7E        		.byte	126
+ 1628 0034 7E        		.byte	126
+ 1629 0035 7F        		.byte	127
+ 1630 0036 7F        		.byte	127
+ 1631 0037 7F        		.byte	127
+ 1632 0038 7F        		.byte	127
+ 1633 0039 7F        		.byte	127
+ 1634 003a 7F        		.byte	127
+ 1635 003b 7F        		.byte	127
+ 1636 003c 7E        		.byte	126
+ 1637 003d 7E        		.byte	126
+ 1638 003e 7D        		.byte	125
+ 1639 003f 7C        		.byte	124
+ 1640 0040 7B        		.byte	123
+ 1641 0041 79        		.byte	121
+ 1642 0042 78        		.byte	120
+ 1643 0043 76        		.byte	118
+ 1644 0044 75        		.byte	117
+ 1645 0045 73        		.byte	115
+ 1646 0046 71        		.byte	113
+ 1647 0047 6F        		.byte	111
+ 1648 0048 6D        		.byte	109
+ 1649 0049 6A        		.byte	106
+ 1650 004a 68        		.byte	104
+ 1651 004b 66        		.byte	102
+ 1652 004c 63        		.byte	99
+ 1653 004d 60        		.byte	96
+ 1654 004e 5E        		.byte	94
+ 1655 004f 5B        		.byte	91
+ 1656 0050 58        		.byte	88
+ 1657 0051 55        		.byte	85
+ 1658 0052 52        		.byte	82
+ 1659 0053 4F        		.byte	79
+ 1660 0054 4C        		.byte	76
+ 1661 0055 49        		.byte	73
+ 1662 0056 46        		.byte	70
+ 1663 0057 43        		.byte	67
+ 1664 0058 40        		.byte	64
+ 1665 0059 3C        		.byte	60
+ 1666 005a 39        		.byte	57
+ 1667 005b 36        		.byte	54
+ 1668 005c 33        		.byte	51
+ 1669 005d 30        		.byte	48
+ 1670 005e 2D        		.byte	45
+ 1671 005f 2A        		.byte	42
+ 1672 0060 27        		.byte	39
+ 1673 0061 24        		.byte	36
+ 1674 0062 21        		.byte	33
+ 1675 0063 1F        		.byte	31
+ 1676 0064 1C        		.byte	28
+ 1677 0065 19        		.byte	25
+ 1678 0066 17        		.byte	23
+ 1679 0067 15        		.byte	21
+ 1680 0068 12        		.byte	18
+ 1681 0069 10        		.byte	16
+ 1682 006a 0E        		.byte	14
+ 1683 006b 0C        		.byte	12
+ 1684 006c 0A        		.byte	10
+ 1685 006d 09        		.byte	9
+ 1686 006e 07        		.byte	7
+ 1687 006f 06        		.byte	6
+ 1688 0070 04        		.byte	4
+ 1689 0071 03        		.byte	3
+ 1690 0072 02        		.byte	2
+ 1691 0073 01        		.byte	1
+ 1692 0074 01        		.byte	1
+ 1693 0075 00        		.byte	0
+ 1694 0076 00        		.byte	0
+ 1695 0077 00        		.byte	0
+ 1696 0078 00        		.byte	0
+ 1697 0079 00        		.byte	0
+ 1698 007a 00        		.byte	0
+ 1699 007b 00        		.byte	0
+ 1700 007c 01        		.byte	1
+ 1701 007d 01        		.byte	1
+ 1702 007e 02        		.byte	2
+ 1703 007f 03        		.byte	3
+ 1704 0080 04        		.byte	4
+ 1705 0081 06        		.byte	6
+ 1706 0082 07        		.byte	7
+ 1707 0083 09        		.byte	9
+ 1708 0084 0A        		.byte	10
+ 1709 0085 0C        		.byte	12
+ 1710 0086 0E        		.byte	14
+ 1711 0087 10        		.byte	16
+ 1712 0088 12        		.byte	18
+ 1713 0089 15        		.byte	21
+ 1714 008a 17        		.byte	23
+ 1715 008b 19        		.byte	25
+ 1716 008c 1C        		.byte	28
+ 1717 008d 1F        		.byte	31
+ 1718 008e 21        		.byte	33
+ 1719 008f 24        		.byte	36
+ 1720 0090 27        		.byte	39
+ 1721 0091 2A        		.byte	42
+ 1722 0092 2D        		.byte	45
+ 1723 0093 30        		.byte	48
+ 1724 0094 33        		.byte	51
+ 1725 0095 36        		.byte	54
+ 1726 0096 39        		.byte	57
+ 1727 0097 3C        		.byte	60
+ 1728               		.text
+ 1729               	.Letext0:
+ 1730               		.file 3 "/usr/lib/avr/include/stdint.h"
+ 1731               		.file 4 "/usr/lib/gcc/avr/4.8.2/include/stddef.h"
+ 1732               		.file 5 "main.h"
+ 1733               		.file 6 "/usr/lib/avr/include/avr/eeprom.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main_debug.c
+     /tmp/ccQEwuPT.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccQEwuPT.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccQEwuPT.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccQEwuPT.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccQEwuPT.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccQEwuPT.s:12     .text:0000000000000000 init
+                            *COM*:0000000000000022 sDS
+     /tmp/ccQEwuPT.s:97     .text:0000000000000056 EnablePWM
+     /tmp/ccQEwuPT.s:119    .text:0000000000000064 SleepMS
+     /tmp/ccQEwuPT.s:1330   .bss:0000000000000002 ulDelayCounter
+     /tmp/ccQEwuPT.s:190    .text:00000000000000d4 GenerateDigit
+     /tmp/ccQEwuPT.s:1571   .rodata:0000000000000000 auc_frequency
+     /tmp/ccQEwuPT.s:1350   .bss:000000000000000b cSWa
+     /tmp/ccQEwuPT.s:1345   .bss:000000000000000a cSWb
+     /tmp/ccQEwuPT.s:371    .text:00000000000001aa Dial_SpeedDialNumber
+     /tmp/ccQEwuPT.s:1356   .eeprom:0000000000000000 EEPROM_SpeedDial
+     /tmp/ccQEwuPT.s:469    .text:000000000000021c WriteCurrentSpeedDial
+     /tmp/ccQEwuPT.s:513    .text:000000000000024e ProcessDialedDigit
+     /tmp/ccQEwuPT.s:747    .text:00000000000003a4 main
+     /tmp/ccQEwuPT.s:1319   .data:0000000000000000 bCurDialState
+     /tmp/ccQEwuPT.s:1325   .bss:0000000000000001 bSF_DetectionActive
+     /tmp/ccQEwuPT.s:1313   .bss:0000000000000000 bPulseDetected
+     /tmp/ccQEwuPT.s:989    .text:00000000000004e4 __vector_5
+     /tmp/ccQEwuPT.s:1340   .bss:0000000000000008 iCurSinValA
+     /tmp/ccQEwuPT.s:1599   .rodata:0000000000000018 auc_SinParam
+     /tmp/ccQEwuPT.s:1335   .bss:0000000000000006 iCurSinValB
+     /tmp/ccQEwuPT.s:1155   .text:00000000000005c8 __vector_1
+     /tmp/ccQEwuPT.s:1217   .text:0000000000000604 __vector_2
+     /tmp/ccQEwuPT.s:1264   .text:0000000000000624 __vector_default
+
+UNDEFINED SYMBOLS
+__udivmodhi4
+__eerd_block_tn85
+__eeupd_block_tn85
+__do_copy_data
+__do_clear_bss

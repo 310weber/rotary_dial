@@ -1,0 +1,1432 @@
+
+main_debug.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000728  00000000  00000000  000000b4  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         0000009a  00800060  00000728  000007dc  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          0000002e  008000fa  008000fa  00000876  2**0
+                  ALLOC
+  3 .eeprom       000000d2  00810000  00810000  00000876  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  4 .stab         000009cc  00000000  00000000  00000948  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  5 .stabstr      000000e5  00000000  00000000  00001314  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .comment      00000011  00000000  00000000  000013f9  2**0
+                  CONTENTS, READONLY
+  7 .debug_aranges 00000020  00000000  00000000  0000140a  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_info   000008bc  00000000  00000000  0000142a  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_abbrev 0000026c  00000000  00000000  00001ce6  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_line   00000214  00000000  00000000  00001f52  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 11 .debug_frame  00000190  00000000  00000000  00002168  2**2
+                  CONTENTS, READONLY, DEBUGGING
+ 12 .debug_str    0000037e  00000000  00000000  000022f8  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 13 .debug_loc    00000587  00000000  00000000  00002676  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	0e c0       	rjmp	.+28     	; 0x1e <__ctors_end>
+   2:	0d c3       	rjmp	.+1562   	; 0x61e <__vector_1>
+   4:	2a c3       	rjmp	.+1620   	; 0x65a <__vector_2>
+   6:	26 c0       	rjmp	.+76     	; 0x54 <__bad_interrupt>
+   8:	25 c0       	rjmp	.+74     	; 0x54 <__bad_interrupt>
+   a:	97 c2       	rjmp	.+1326   	; 0x53a <__vector_5>
+   c:	23 c0       	rjmp	.+70     	; 0x54 <__bad_interrupt>
+   e:	22 c0       	rjmp	.+68     	; 0x54 <__bad_interrupt>
+  10:	21 c0       	rjmp	.+66     	; 0x54 <__bad_interrupt>
+  12:	20 c0       	rjmp	.+64     	; 0x54 <__bad_interrupt>
+  14:	1f c0       	rjmp	.+62     	; 0x54 <__bad_interrupt>
+  16:	1e c0       	rjmp	.+60     	; 0x54 <__bad_interrupt>
+  18:	1d c0       	rjmp	.+58     	; 0x54 <__bad_interrupt>
+  1a:	1c c0       	rjmp	.+56     	; 0x54 <__bad_interrupt>
+  1c:	1b c0       	rjmp	.+54     	; 0x54 <__bad_interrupt>
+
+0000001e <__ctors_end>:
+  1e:	11 24       	eor	r1, r1
+  20:	1f be       	out	0x3f, r1	; 63
+  22:	cf e5       	ldi	r28, 0x5F	; 95
+  24:	d2 e0       	ldi	r29, 0x02	; 2
+  26:	de bf       	out	0x3e, r29	; 62
+  28:	cd bf       	out	0x3d, r28	; 61
+
+0000002a <__do_copy_data>:
+  2a:	10 e0       	ldi	r17, 0x00	; 0
+  2c:	a0 e6       	ldi	r26, 0x60	; 96
+  2e:	b0 e0       	ldi	r27, 0x00	; 0
+  30:	e8 e2       	ldi	r30, 0x28	; 40
+  32:	f7 e0       	ldi	r31, 0x07	; 7
+  34:	02 c0       	rjmp	.+4      	; 0x3a <__do_copy_data+0x10>
+  36:	05 90       	lpm	r0, Z+
+  38:	0d 92       	st	X+, r0
+  3a:	aa 3f       	cpi	r26, 0xFA	; 250
+  3c:	b1 07       	cpc	r27, r17
+  3e:	d9 f7       	brne	.-10     	; 0x36 <__do_copy_data+0xc>
+
+00000040 <__do_clear_bss>:
+  40:	11 e0       	ldi	r17, 0x01	; 1
+  42:	aa ef       	ldi	r26, 0xFA	; 250
+  44:	b0 e0       	ldi	r27, 0x00	; 0
+  46:	01 c0       	rjmp	.+2      	; 0x4a <.do_clear_bss_start>
+
+00000048 <.do_clear_bss_loop>:
+  48:	1d 92       	st	X+, r1
+
+0000004a <.do_clear_bss_start>:
+  4a:	a8 32       	cpi	r26, 0x28	; 40
+  4c:	b1 07       	cpc	r27, r17
+  4e:	e1 f7       	brne	.-8      	; 0x48 <.do_clear_bss_loop>
+  50:	d4 d1       	rcall	.+936    	; 0x3fa <main>
+  52:	68 c3       	rjmp	.+1744   	; 0x724 <_exit>
+
+00000054 <__bad_interrupt>:
+  54:	12 c3       	rjmp	.+1572   	; 0x67a <__vector_default>
+
+00000056 <init>:
+
+
+// Initialization
+void init (void)
+{
+	TIMSK  = (1<<TOIE0);                // Int T0 Overflow enabled
+  56:	82 e0       	ldi	r24, 0x02	; 2
+  58:	89 bf       	out	0x39, r24	; 57
+
+	TCCR0A = (1<<WGM00) | (1<<WGM01);   // 8Bit PWM; Compare/match output mode configured later
+  5a:	93 e0       	ldi	r25, 0x03	; 3
+  5c:	9a bd       	out	0x2a, r25	; 42
+	TCCR0B = TIMER_PRESCALE_MASK0 & TIMER_CLK_DIV1;
+  5e:	91 e0       	ldi	r25, 0x01	; 1
+  60:	93 bf       	out	0x33, r25	; 51
+	TCNT0 = 0;
+  62:	12 be       	out	0x32, r1	; 50
+	OCR0A = 0;
+  64:	19 bc       	out	0x29, r1	; 41
+	
+	// Configure I/O pins
+	PORTB = 0;	// Reset all outputs. Force PWM output (PB0) to 0
+  66:	18 ba       	out	0x18, r1	; 24
+	DDRB   = (1 << PIN_PWM_OUT) | (1 << PIN_DEBUG);	// PWM output (OC0A pin) [AW] and debug (PB5)
+  68:	91 e2       	ldi	r25, 0x21	; 33
+  6a:	97 bb       	out	0x17, r25	; 23
+	PORTB  = 0;  // [AW] Disable Pull-ups - external HW debounce
+  6c:	18 ba       	out	0x18, r1	; 24
+
+	// Disable unused modules to save power
+	PRR = (1<<PRTIM1) | (1<<PRUSI) | (1<<PRADC);
+  6e:	9b e0       	ldi	r25, 0x0B	; 11
+  70:	90 bd       	out	0x20, r25	; 32
+	ACSR = (1<<ACD);
+  72:	90 e8       	ldi	r25, 0x80	; 128
+  74:	98 b9       	out	0x08, r25	; 8
+
+	// Configure pin change interrupt
+	MCUCR = (1 << ISC01) | (0 << ISC00);         // [AW] Set INT0 for falling edge detection
+  76:	85 bf       	out	0x35, r24	; 53
+	GIMSK = (1 << INT0) | (1 << PCIE);           // [AW] Added INT0
+  78:	80 e6       	ldi	r24, 0x60	; 96
+  7a:	8b bf       	out	0x3b, r24	; 59
+	PCMSK = (1 << PIN_DIAL) | (1 << PIN_PULSE);
+  7c:	86 e0       	ldi	r24, 0x06	; 6
+  7e:	85 bb       	out	0x15, r24	; 21
+
+	// Initialize (global) dial status structure (sDS)
+	sDS.iDialedDigit = DIGIT_OFF;
+  80:	8f ef       	ldi	r24, 0xFF	; 255
+  82:	80 93 06 01 	sts	0x0106, r24
+
+	// Variables to detect special functions (SF)
+	// SF dialed by holding rotor for few seconds (beep to indicate that SF activated) before releasing it
+	// SF defined as: 1:*; 2:#; 3-9: speed dial; 0: program speed dial number
+	sDS.bSF_Selected = false;	// Special Function selected
+  86:	10 92 07 01 	sts	0x0107, r1
+
+	// Speed dial stuff
+	sDS.iSpeedDialDigitIndex = -1;	// Speed dial digit index
+  8a:	80 93 08 01 	sts	0x0108, r24
+	sDS.iSpeedDialIndex = -1; // Speed dial digi index (in the SD array)	
+  8e:	80 93 09 01 	sts	0x0109, r24
+  92:	80 e0       	ldi	r24, 0x00	; 0
+  94:	90 e0       	ldi	r25, 0x00	; 0
+	for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)	// Clear selected SD array
+	{
+		sDS.arSpeedDial[i] = DIGIT_OFF;
+  96:	2f ef       	ldi	r18, 0xFF	; 255
+  98:	fc 01       	movw	r30, r24
+  9a:	ea 5f       	subi	r30, 0xFA	; 250
+  9c:	fe 4f       	sbci	r31, 0xFE	; 254
+  9e:	24 83       	std	Z+4, r18	; 0x04
+  a0:	01 96       	adiw	r24, 0x01	; 1
+	sDS.bSF_Selected = false;	// Special Function selected
+
+	// Speed dial stuff
+	sDS.iSpeedDialDigitIndex = -1;	// Speed dial digit index
+	sDS.iSpeedDialIndex = -1; // Speed dial digi index (in the SD array)	
+	for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)	// Clear selected SD array
+  a2:	8e 31       	cpi	r24, 0x1E	; 30
+  a4:	91 05       	cpc	r25, r1
+  a6:	c1 f7       	brne	.-16     	; 0x98 <init+0x42>
+	{
+		sDS.arSpeedDial[i] = DIGIT_OFF;
+	}
+
+	// Interrupts enabled
+	sei();                     	     
+  a8:	78 94       	sei
+  aa:	08 95       	ret
+
+000000ac <EnablePWM>:
+
+
+// Enable PWM output by configuring compare match mode - non inverting PWM
+void EnablePWM (void)
+{
+	sbi(TCCR0A, COM0A1);
+  ac:	8a b5       	in	r24, 0x2a	; 42
+  ae:	80 68       	ori	r24, 0x80	; 128
+  b0:	8a bd       	out	0x2a, r24	; 42
+	cbi(TCCR0A, COM0A0);
+  b2:	8a b5       	in	r24, 0x2a	; 42
+  b4:	8f 7b       	andi	r24, 0xBF	; 191
+  b6:	8a bd       	out	0x2a, r24	; 42
+  b8:	08 95       	ret
+
+000000ba <SleepMS>:
+
+
+// Wait x ms
+void SleepMS(unsigned int uiMsec)
+{	
+	ulDelayCounter = 0;
+  ba:	10 92 fc 00 	sts	0x00FC, r1
+  be:	10 92 fd 00 	sts	0x00FD, r1
+  c2:	10 92 fe 00 	sts	0x00FE, r1
+  c6:	10 92 ff 00 	sts	0x00FF, r1
+	
+	set_sleep_mode(SLEEP_MODE_IDLE);		
+  ca:	25 b7       	in	r18, 0x35	; 53
+  cc:	27 7e       	andi	r18, 0xE7	; 231
+  ce:	25 bf       	out	0x35, r18	; 53
+	while(ulDelayCounter <= uiMsec * T0_OVERFLOW_PER_MS)
+  d0:	ac 01       	movw	r20, r24
+  d2:	42 95       	swap	r20
+  d4:	52 95       	swap	r21
+  d6:	50 7f       	andi	r21, 0xF0	; 240
+  d8:	54 27       	eor	r21, r20
+  da:	40 7f       	andi	r20, 0xF0	; 240
+  dc:	54 27       	eor	r21, r20
+  de:	48 1b       	sub	r20, r24
+  e0:	59 0b       	sbc	r21, r25
+  e2:	60 e0       	ldi	r22, 0x00	; 0
+  e4:	70 e0       	ldi	r23, 0x00	; 0
+  e6:	80 91 fc 00 	lds	r24, 0x00FC
+  ea:	90 91 fd 00 	lds	r25, 0x00FD
+  ee:	a0 91 fe 00 	lds	r26, 0x00FE
+  f2:	b0 91 ff 00 	lds	r27, 0x00FF
+  f6:	48 17       	cp	r20, r24
+  f8:	59 07       	cpc	r21, r25
+  fa:	6a 07       	cpc	r22, r26
+  fc:	7b 07       	cpc	r23, r27
+  fe:	a0 f0       	brcs	.+40     	; 0x128 <SleepMS+0x6e>
+	{
+		sleep_mode();
+ 100:	85 b7       	in	r24, 0x35	; 53
+ 102:	80 62       	ori	r24, 0x20	; 32
+ 104:	85 bf       	out	0x35, r24	; 53
+ 106:	88 95       	sleep
+ 108:	85 b7       	in	r24, 0x35	; 53
+ 10a:	8f 7d       	andi	r24, 0xDF	; 223
+ 10c:	85 bf       	out	0x35, r24	; 53
+void SleepMS(unsigned int uiMsec)
+{	
+	ulDelayCounter = 0;
+	
+	set_sleep_mode(SLEEP_MODE_IDLE);		
+	while(ulDelayCounter <= uiMsec * T0_OVERFLOW_PER_MS)
+ 10e:	80 91 fc 00 	lds	r24, 0x00FC
+ 112:	90 91 fd 00 	lds	r25, 0x00FD
+ 116:	a0 91 fe 00 	lds	r26, 0x00FE
+ 11a:	b0 91 ff 00 	lds	r27, 0x00FF
+ 11e:	48 17       	cp	r20, r24
+ 120:	59 07       	cpc	r21, r25
+ 122:	6a 07       	cpc	r22, r26
+ 124:	7b 07       	cpc	r23, r27
+ 126:	60 f7       	brcc	.-40     	; 0x100 <SleepMS+0x46>
+ 128:	08 95       	ret
+
+0000012a <GenerateDigit>:
+}
+
+
+// Generate DTMF tone, duration x ms
+void GenerateDigit (signed char scDigit, unsigned int uiDuarationMS)
+{
+ 12a:	cf 93       	push	r28
+ 12c:	df 93       	push	r29
+ 12e:	eb 01       	movw	r28, r22
+	if (scDigit >= 0 && scDigit <= DIGIT_POUND)
+ 130:	8c 30       	cpi	r24, 0x0C	; 12
+ 132:	78 f4       	brcc	.+30     	; 0x152 <GenerateDigit+0x28>
+	{
+		// Standard digits 0-9, *, #
+		cSWa = auc_frequency[scDigit][0];  
+ 134:	e8 2f       	mov	r30, r24
+ 136:	ee 0f       	add	r30, r30
+ 138:	ff 0b       	sbc	r31, r31
+ 13a:	ef 59       	subi	r30, 0x9F	; 159
+ 13c:	ff 4f       	sbci	r31, 0xFF	; 255
+ 13e:	80 81       	ld	r24, Z
+ 140:	80 93 05 01 	sts	0x0105, r24
+		cSWb = auc_frequency[scDigit][1]; 
+ 144:	81 81       	ldd	r24, Z+1	; 0x01
+ 146:	80 93 04 01 	sts	0x0104, r24
+		EnablePWM();
+ 14a:	b0 df       	rcall	.-160    	; 0xac <EnablePWM>
+
+		// Wait x ms
+		SleepMS(uiDuarationMS);
+ 14c:	ce 01       	movw	r24, r28
+ 14e:	b5 df       	rcall	.-150    	; 0xba <SleepMS>
+ 150:	49 c0       	rjmp	.+146    	; 0x1e4 <GenerateDigit+0xba>
+	} 
+	else if (scDigit==DIGIT_BEEP)
+ 152:	86 3f       	cpi	r24, 0xF6	; 246
+ 154:	49 f4       	brne	.+18     	; 0x168 <GenerateDigit+0x3e>
+	{
+		// Beep ~1000Hz (66)
+		cSWa = 66;  
+ 156:	82 e4       	ldi	r24, 0x42	; 66
+ 158:	80 93 05 01 	sts	0x0105, r24
+		cSWb = 0;
+ 15c:	10 92 04 01 	sts	0x0104, r1
+		EnablePWM();
+ 160:	a5 df       	rcall	.-182    	; 0xac <EnablePWM>
+
+		// Wait x ms
+		SleepMS(uiDuarationMS);
+ 162:	ce 01       	movw	r24, r28
+ 164:	aa df       	rcall	.-172    	; 0xba <SleepMS>
+ 166:	3e c0       	rjmp	.+124    	; 0x1e4 <GenerateDigit+0xba>
+	}
+	else if (scDigit==DIGIT_BEEP_LOW)
+ 168:	83 3f       	cpi	r24, 0xF3	; 243
+ 16a:	49 f4       	brne	.+18     	; 0x17e <GenerateDigit+0x54>
+	{
+		// Beep ~500Hz (33)
+		cSWa = 33;  
+ 16c:	81 e2       	ldi	r24, 0x21	; 33
+ 16e:	80 93 05 01 	sts	0x0105, r24
+		cSWb = 0;
+ 172:	10 92 04 01 	sts	0x0104, r1
+		EnablePWM();
+ 176:	9a df       	rcall	.-204    	; 0xac <EnablePWM>
+
+		// Wait x ms
+		SleepMS(uiDuarationMS);
+ 178:	ce 01       	movw	r24, r28
+ 17a:	9f df       	rcall	.-194    	; 0xba <SleepMS>
+ 17c:	33 c0       	rjmp	.+102    	; 0x1e4 <GenerateDigit+0xba>
+	}
+	else if (scDigit==DIGIT_TUNE_ASC)
+ 17e:	85 3f       	cpi	r24, 0xF5	; 245
+ 180:	c1 f4       	brne	.+48     	; 0x1b2 <GenerateDigit+0x88>
+	{
+		cSWa = 34;	// C=523.25Hz  
+ 182:	82 e2       	ldi	r24, 0x22	; 34
+ 184:	80 93 05 01 	sts	0x0105, r24
+		cSWb = 0;
+ 188:	10 92 04 01 	sts	0x0104, r1
+		EnablePWM();
+ 18c:	8f df       	rcall	.-226    	; 0xac <EnablePWM>
+		
+		SleepMS(uiDuarationMS/3);
+ 18e:	ce 01       	movw	r24, r28
+ 190:	63 e0       	ldi	r22, 0x03	; 3
+ 192:	70 e0       	ldi	r23, 0x00	; 0
+ 194:	82 d2       	rcall	.+1284   	; 0x69a <__udivmodhi4>
+ 196:	eb 01       	movw	r28, r22
+ 198:	cb 01       	movw	r24, r22
+ 19a:	8f df       	rcall	.-226    	; 0xba <SleepMS>
+		cSWa = 43;	// E=659.26Hz
+ 19c:	8b e2       	ldi	r24, 0x2B	; 43
+ 19e:	80 93 05 01 	sts	0x0105, r24
+		SleepMS(uiDuarationMS/3);
+ 1a2:	ce 01       	movw	r24, r28
+ 1a4:	8a df       	rcall	.-236    	; 0xba <SleepMS>
+		cSWa = 51;	// G=784Hz
+ 1a6:	83 e3       	ldi	r24, 0x33	; 51
+ 1a8:	80 93 05 01 	sts	0x0105, r24
+		SleepMS(uiDuarationMS/3);
+ 1ac:	ce 01       	movw	r24, r28
+ 1ae:	85 df       	rcall	.-246    	; 0xba <SleepMS>
+ 1b0:	19 c0       	rjmp	.+50     	; 0x1e4 <GenerateDigit+0xba>
+	}
+	else if (scDigit==DIGIT_TUNE_DESC)
+ 1b2:	84 3f       	cpi	r24, 0xF4	; 244
+ 1b4:	b9 f4       	brne	.+46     	; 0x1e4 <GenerateDigit+0xba>
+	{
+		cSWa = 51;	// G=784Hz
+ 1b6:	83 e3       	ldi	r24, 0x33	; 51
+ 1b8:	80 93 05 01 	sts	0x0105, r24
+		cSWb = 0;
+ 1bc:	10 92 04 01 	sts	0x0104, r1
+		EnablePWM();
+ 1c0:	75 df       	rcall	.-278    	; 0xac <EnablePWM>
+
+		SleepMS(uiDuarationMS/3);
+ 1c2:	ce 01       	movw	r24, r28
+ 1c4:	63 e0       	ldi	r22, 0x03	; 3
+ 1c6:	70 e0       	ldi	r23, 0x00	; 0
+ 1c8:	68 d2       	rcall	.+1232   	; 0x69a <__udivmodhi4>
+ 1ca:	eb 01       	movw	r28, r22
+ 1cc:	cb 01       	movw	r24, r22
+ 1ce:	75 df       	rcall	.-278    	; 0xba <SleepMS>
+		cSWa = 43;	// E=659.26Hz
+ 1d0:	8b e2       	ldi	r24, 0x2B	; 43
+ 1d2:	80 93 05 01 	sts	0x0105, r24
+		SleepMS(uiDuarationMS/3);
+ 1d6:	ce 01       	movw	r24, r28
+ 1d8:	70 df       	rcall	.-288    	; 0xba <SleepMS>
+		cSWa = 34;	// C=523.25Hz  
+ 1da:	82 e2       	ldi	r24, 0x22	; 34
+ 1dc:	80 93 05 01 	sts	0x0105, r24
+		SleepMS(uiDuarationMS/3);
+ 1e0:	ce 01       	movw	r24, r28
+ 1e2:	6b df       	rcall	.-298    	; 0xba <SleepMS>
+	}
+
+
+	// Stop DTMF transmitting
+	// Disable PWM output (compare match mode 0) and force it to 0
+	cbi(TCCR0A, COM0A1);
+ 1e4:	8a b5       	in	r24, 0x2a	; 42
+ 1e6:	8f 77       	andi	r24, 0x7F	; 127
+ 1e8:	8a bd       	out	0x2a, r24	; 42
+	cbi(TCCR0A, COM0A0);
+ 1ea:	8a b5       	in	r24, 0x2a	; 42
+ 1ec:	8f 7b       	andi	r24, 0xBF	; 191
+ 1ee:	8a bd       	out	0x2a, r24	; 42
+	cbi(PORTB, PIN_PWM_OUT);
+ 1f0:	c0 98       	cbi	0x18, 0	; 24
+	cSWa = 0;
+ 1f2:	10 92 05 01 	sts	0x0105, r1
+	cSWb = 0;
+ 1f6:	10 92 04 01 	sts	0x0104, r1
+}
+ 1fa:	df 91       	pop	r29
+ 1fc:	cf 91       	pop	r28
+ 1fe:	08 95       	ret
+
+00000200 <Dial_SpeedDialNumber>:
+}
+
+
+// Dial speed dial number (it erases current SD number in the global structure)
+void Dial_SpeedDialNumber (unsigned char iSpeedDialIndex)
+{
+ 200:	cf 93       	push	r28
+ 202:	df 93       	push	r29
+	if ((iSpeedDialIndex >= 3) && (iSpeedDialIndex <= 9))
+ 204:	9d ef       	ldi	r25, 0xFD	; 253
+ 206:	98 0f       	add	r25, r24
+ 208:	97 30       	cpi	r25, 0x07	; 7
+ 20a:	80 f5       	brcc	.+96     	; 0x26c <__stack+0xd>
+	{
+		// If dialed index 3 => using array index 0
+		eeprom_read_block (&sDS.arSpeedDial, &EEPROM_SpeedDial[iSpeedDialIndex-3][0], SPEED_DIAL_SIZE);
+ 20c:	90 e0       	ldi	r25, 0x00	; 0
+ 20e:	03 97       	sbiw	r24, 0x03	; 3
+ 210:	bc 01       	movw	r22, r24
+ 212:	62 95       	swap	r22
+ 214:	72 95       	swap	r23
+ 216:	70 7f       	andi	r23, 0xF0	; 240
+ 218:	76 27       	eor	r23, r22
+ 21a:	60 7f       	andi	r22, 0xF0	; 240
+ 21c:	76 27       	eor	r23, r22
+ 21e:	68 1b       	sub	r22, r24
+ 220:	79 0b       	sbc	r23, r25
+ 222:	66 0f       	add	r22, r22
+ 224:	77 1f       	adc	r23, r23
+ 226:	60 50       	subi	r22, 0x00	; 0
+ 228:	70 40       	sbci	r23, 0x00	; 0
+ 22a:	4e e1       	ldi	r20, 0x1E	; 30
+ 22c:	50 e0       	ldi	r21, 0x00	; 0
+ 22e:	8a e0       	ldi	r24, 0x0A	; 10
+ 230:	91 e0       	ldi	r25, 0x01	; 1
+ 232:	47 d2       	rcall	.+1166   	; 0x6c2 <__eerd_block_tn85>
+ 234:	c0 e0       	ldi	r28, 0x00	; 0
+ 236:	d0 e0       	ldi	r29, 0x00	; 0
+
+		for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+		{
+			// Dial the number
+			// Skip dialing invalid digits
+			if ( (sDS.arSpeedDial[i] >= 0) && (sDS.arSpeedDial[i] <= DIGIT_POUND) )
+ 238:	fe 01       	movw	r30, r28
+ 23a:	ea 5f       	subi	r30, 0xFA	; 250
+ 23c:	fe 4f       	sbci	r31, 0xFE	; 254
+ 23e:	24 81       	ldd	r18, Z+4	; 0x04
+ 240:	22 23       	and	r18, r18
+ 242:	84 f0       	brlt	.+32     	; 0x264 <__stack+0x5>
+ 244:	fe 01       	movw	r30, r28
+ 246:	ea 5f       	subi	r30, 0xFA	; 250
+ 248:	fe 4f       	sbci	r31, 0xFE	; 254
+ 24a:	24 81       	ldd	r18, Z+4	; 0x04
+ 24c:	2c 30       	cpi	r18, 0x0C	; 12
+ 24e:	54 f4       	brge	.+20     	; 0x264 <__stack+0x5>
+			{
+				GenerateDigit(sDS.arSpeedDial[i], DTMF_DURATION_MS);  
+ 250:	fe 01       	movw	r30, r28
+ 252:	ea 5f       	subi	r30, 0xFA	; 250
+ 254:	fe 4f       	sbci	r31, 0xFE	; 254
+ 256:	84 81       	ldd	r24, Z+4	; 0x04
+ 258:	64 e6       	ldi	r22, 0x64	; 100
+ 25a:	70 e0       	ldi	r23, 0x00	; 0
+ 25c:	66 df       	rcall	.-308    	; 0x12a <GenerateDigit>
+
+				// Pause between DTMF tones
+				SleepMS (DTMF_DURATION_MS);    
+ 25e:	84 e6       	ldi	r24, 0x64	; 100
+ 260:	90 e0       	ldi	r25, 0x00	; 0
+ 262:	2b df       	rcall	.-426    	; 0xba <SleepMS>
+ 264:	21 96       	adiw	r28, 0x01	; 1
+	if ((iSpeedDialIndex >= 3) && (iSpeedDialIndex <= 9))
+	{
+		// If dialed index 3 => using array index 0
+		eeprom_read_block (&sDS.arSpeedDial, &EEPROM_SpeedDial[iSpeedDialIndex-3][0], SPEED_DIAL_SIZE);
+
+		for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 266:	ce 31       	cpi	r28, 0x1E	; 30
+ 268:	d1 05       	cpc	r29, r1
+ 26a:	31 f7       	brne	.-52     	; 0x238 <Dial_SpeedDialNumber+0x38>
+				// Pause between DTMF tones
+				SleepMS (DTMF_DURATION_MS);    
+			}
+		}
+	}
+}
+ 26c:	df 91       	pop	r29
+ 26e:	cf 91       	pop	r28
+ 270:	08 95       	ret
+
+00000272 <WriteCurrentSpeedDial>:
+
+
+// Write current speed dial array (from the global strucutre) to the EEPROM
+void WriteCurrentSpeedDial(unsigned char iSpeedDialIndex)
+{
+	if ((iSpeedDialIndex >= 3) && (iSpeedDialIndex <= 9))
+ 272:	9d ef       	ldi	r25, 0xFD	; 253
+ 274:	98 0f       	add	r25, r24
+ 276:	97 30       	cpi	r25, 0x07	; 7
+ 278:	a0 f4       	brcc	.+40     	; 0x2a2 <WriteCurrentSpeedDial+0x30>
+	{
+		// If dialed index 3 => using array index 0
+		eeprom_update_block (&sDS.arSpeedDial, &EEPROM_SpeedDial[iSpeedDialIndex-3][0], SPEED_DIAL_SIZE);
+ 27a:	90 e0       	ldi	r25, 0x00	; 0
+ 27c:	03 97       	sbiw	r24, 0x03	; 3
+ 27e:	bc 01       	movw	r22, r24
+ 280:	62 95       	swap	r22
+ 282:	72 95       	swap	r23
+ 284:	70 7f       	andi	r23, 0xF0	; 240
+ 286:	76 27       	eor	r23, r22
+ 288:	60 7f       	andi	r22, 0xF0	; 240
+ 28a:	76 27       	eor	r23, r22
+ 28c:	68 1b       	sub	r22, r24
+ 28e:	79 0b       	sbc	r23, r25
+ 290:	66 0f       	add	r22, r22
+ 292:	77 1f       	adc	r23, r23
+ 294:	60 50       	subi	r22, 0x00	; 0
+ 296:	70 40       	sbci	r23, 0x00	; 0
+ 298:	4e e1       	ldi	r20, 0x1E	; 30
+ 29a:	50 e0       	ldi	r21, 0x00	; 0
+ 29c:	8a e0       	ldi	r24, 0x0A	; 10
+ 29e:	91 e0       	ldi	r25, 0x01	; 1
+ 2a0:	20 d2       	rcall	.+1088   	; 0x6e2 <__eeupd_block_tn85>
+ 2a2:	08 95       	ret
+
+000002a4 <ProcessDialedDigit>:
+
+
+
+// Processing dialed digit
+void ProcessDialedDigit (void)
+{
+ 2a4:	cf 93       	push	r28
+ 2a6:	df 93       	push	r29
+	// Special functions 1 and 2 (* and #)
+	if (sDS.bSF_Selected && (sDS.iDialedDigit == 1))				
+ 2a8:	80 91 07 01 	lds	r24, 0x0107
+ 2ac:	88 23       	and	r24, r24
+ 2ae:	41 f0       	breq	.+16     	; 0x2c0 <ProcessDialedDigit+0x1c>
+ 2b0:	80 91 06 01 	lds	r24, 0x0106
+ 2b4:	81 30       	cpi	r24, 0x01	; 1
+ 2b6:	21 f4       	brne	.+8      	; 0x2c0 <ProcessDialedDigit+0x1c>
+	{
+		// SF 1-*
+		sDS.iDialedDigit = DIGIT_STAR;
+ 2b8:	8a e0       	ldi	r24, 0x0A	; 10
+ 2ba:	80 93 06 01 	sts	0x0106, r24
+ 2be:	0b c0       	rjmp	.+22     	; 0x2d6 <ProcessDialedDigit+0x32>
+	}
+	else if (sDS.bSF_Selected && (sDS.iDialedDigit == 2))
+ 2c0:	80 91 07 01 	lds	r24, 0x0107
+ 2c4:	88 23       	and	r24, r24
+ 2c6:	39 f0       	breq	.+14     	; 0x2d6 <ProcessDialedDigit+0x32>
+ 2c8:	80 91 06 01 	lds	r24, 0x0106
+ 2cc:	82 30       	cpi	r24, 0x02	; 2
+ 2ce:	19 f4       	brne	.+6      	; 0x2d6 <ProcessDialedDigit+0x32>
+	{
+		// SF 2-#
+		sDS.iDialedDigit = DIGIT_POUND;
+ 2d0:	8b e0       	ldi	r24, 0x0B	; 11
+ 2d2:	80 93 06 01 	sts	0x0106, r24
+	}
+
+	// Speed dial functionality - entering and leaving SD mode
+	if (sDS.bSF_Selected && (sDS.iDialedDigit == 0))
+ 2d6:	80 91 07 01 	lds	r24, 0x0107
+ 2da:	88 23       	and	r24, r24
+ 2dc:	71 f1       	breq	.+92     	; 0x33a <ProcessDialedDigit+0x96>
+ 2de:	80 91 06 01 	lds	r24, 0x0106
+ 2e2:	81 11       	cpse	r24, r1
+ 2e4:	2a c0       	rjmp	.+84     	; 0x33a <ProcessDialedDigit+0x96>
+	{
+		// SF 0 - write speed dial
+
+		// SP programming already in progress?
+		if (sDS.iSpeedDialDigitIndex < 0)
+ 2e6:	80 91 08 01 	lds	r24, 0x0108
+ 2ea:	88 23       	and	r24, r24
+ 2ec:	cc f4       	brge	.+50     	; 0x320 <ProcessDialedDigit+0x7c>
+		{
+			// Just entered SD mode						
+			sDS.iSpeedDialDigitIndex = 0;
+ 2ee:	10 92 08 01 	sts	0x0108, r1
+
+			// At this point we don't know SD index yet
+			sDS.iSpeedDialIndex = -1;
+ 2f2:	8f ef       	ldi	r24, 0xFF	; 255
+ 2f4:	80 93 09 01 	sts	0x0109, r24
+ 2f8:	80 e0       	ldi	r24, 0x00	; 0
+ 2fa:	90 e0       	ldi	r25, 0x00	; 0
+
+			// Clear selected SD array
+			for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+			{
+				sDS.arSpeedDial[i] = DIGIT_OFF;
+ 2fc:	2f ef       	ldi	r18, 0xFF	; 255
+ 2fe:	fc 01       	movw	r30, r24
+ 300:	ea 5f       	subi	r30, 0xFA	; 250
+ 302:	fe 4f       	sbci	r31, 0xFE	; 254
+ 304:	24 83       	std	Z+4, r18	; 0x04
+ 306:	01 96       	adiw	r24, 0x01	; 1
+
+			// At this point we don't know SD index yet
+			sDS.iSpeedDialIndex = -1;
+
+			// Clear selected SD array
+			for (unsigned char i=0; i<SPEED_DIAL_SIZE; i++)
+ 308:	8e 31       	cpi	r24, 0x1E	; 30
+ 30a:	91 05       	cpc	r25, r1
+ 30c:	c1 f7       	brne	.-16     	; 0x2fe <ProcessDialedDigit+0x5a>
+			{
+				sDS.arSpeedDial[i] = DIGIT_OFF;
+			}
+
+			// Beep upon entering SD mode, user has to enter SD index
+			GenerateDigit (DIGIT_TUNE_ASC, 700);
+ 30e:	6c eb       	ldi	r22, 0xBC	; 188
+ 310:	72 e0       	ldi	r23, 0x02	; 2
+ 312:	85 ef       	ldi	r24, 0xF5	; 245
+ 314:	0a df       	rcall	.-492    	; 0x12a <GenerateDigit>
+			GenerateDigit (DIGIT_TUNE_DESC, 700);
+ 316:	6c eb       	ldi	r22, 0xBC	; 188
+ 318:	72 e0       	ldi	r23, 0x02	; 2
+ 31a:	84 ef       	ldi	r24, 0xF4	; 244
+ 31c:	06 df       	rcall	.-500    	; 0x12a <GenerateDigit>
+ 31e:	6a c0       	rjmp	.+212    	; 0x3f4 <ProcessDialedDigit+0x150>
+		else
+		{
+			// SD in progress and user entered SF 0 - save SD and exit SD mode
+		
+			// Save speed dial number
+			WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 320:	c9 e0       	ldi	r28, 0x09	; 9
+ 322:	d1 e0       	ldi	r29, 0x01	; 1
+ 324:	88 81       	ld	r24, Y
+ 326:	a5 df       	rcall	.-182    	; 0x272 <WriteCurrentSpeedDial>
+
+			// Leave SD mode
+			sDS.iSpeedDialIndex = -1;
+ 328:	8f ef       	ldi	r24, 0xFF	; 255
+ 32a:	88 83       	st	Y, r24
+			sDS.iSpeedDialDigitIndex = -1;
+ 32c:	80 93 08 01 	sts	0x0108, r24
+
+			// Beep to indicate that we done
+			GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 330:	60 e2       	ldi	r22, 0x20	; 32
+ 332:	73 e0       	ldi	r23, 0x03	; 3
+ 334:	84 ef       	ldi	r24, 0xF4	; 244
+ 336:	f9 de       	rcall	.-526    	; 0x12a <GenerateDigit>
+ 338:	5d c0       	rjmp	.+186    	; 0x3f4 <ProcessDialedDigit+0x150>
+		}
+	}
+	// Programming SD number
+	else if (sDS.iSpeedDialDigitIndex >= 0)
+ 33a:	80 91 08 01 	lds	r24, 0x0108
+ 33e:	88 23       	and	r24, r24
+ 340:	0c f4       	brge	.+2      	; 0x344 <ProcessDialedDigit+0xa0>
+ 342:	43 c0       	rjmp	.+134    	; 0x3ca <ProcessDialedDigit+0x126>
+	{
+		// First digit dialed after selecting SD mode. SD index not set yet
+		if (sDS.iSpeedDialIndex < 0)
+ 344:	80 91 09 01 	lds	r24, 0x0109
+ 348:	88 23       	and	r24, r24
+ 34a:	dc f4       	brge	.+54     	; 0x382 <ProcessDialedDigit+0xde>
+		{
+			// SD index supposed to be between 3 and 9
+			if ((sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 34c:	80 91 06 01 	lds	r24, 0x0106
+ 350:	83 30       	cpi	r24, 0x03	; 3
+ 352:	6c f0       	brlt	.+26     	; 0x36e <ProcessDialedDigit+0xca>
+ 354:	80 91 06 01 	lds	r24, 0x0106
+ 358:	8a 30       	cpi	r24, 0x0A	; 10
+ 35a:	4c f4       	brge	.+18     	; 0x36e <ProcessDialedDigit+0xca>
+			{
+				sDS.iSpeedDialIndex = sDS.iDialedDigit;
+ 35c:	80 91 06 01 	lds	r24, 0x0106
+ 360:	80 93 09 01 	sts	0x0109, r24
+			
+				// Beep to indicate that we are in the SD mode
+				GenerateDigit (DIGIT_TUNE_ASC, 800);
+ 364:	60 e2       	ldi	r22, 0x20	; 32
+ 366:	73 e0       	ldi	r23, 0x03	; 3
+ 368:	85 ef       	ldi	r24, 0xF5	; 245
+ 36a:	df de       	rcall	.-578    	; 0x12a <GenerateDigit>
+ 36c:	43 c0       	rjmp	.+134    	; 0x3f4 <ProcessDialedDigit+0x150>
+			else
+			{
+				// Wrong SD index - beep and exit SD mode
+			
+				// Leave SD mode
+				sDS.iSpeedDialIndex = -1;
+ 36e:	8f ef       	ldi	r24, 0xFF	; 255
+ 370:	80 93 09 01 	sts	0x0109, r24
+				sDS.iSpeedDialDigitIndex = -1;
+ 374:	80 93 08 01 	sts	0x0108, r24
+			
+				// Long Beep to indicate error
+				GenerateDigit (DIGIT_BEEP, 1000);
+ 378:	68 ee       	ldi	r22, 0xE8	; 232
+ 37a:	73 e0       	ldi	r23, 0x03	; 3
+ 37c:	86 ef       	ldi	r24, 0xF6	; 246
+ 37e:	d5 de       	rcall	.-598    	; 0x12a <GenerateDigit>
+ 380:	39 c0       	rjmp	.+114    	; 0x3f4 <ProcessDialedDigit+0x150>
+		else
+		{
+			// Programming SD already in progress
+
+			// Do we have too many digits entered?
+			if (sDS.iSpeedDialDigitIndex >= SPEED_DIAL_SIZE)
+ 382:	80 91 08 01 	lds	r24, 0x0108
+ 386:	8e 31       	cpi	r24, 0x1E	; 30
+ 388:	6c f0       	brlt	.+26     	; 0x3a4 <ProcessDialedDigit+0x100>
+			{
+				// YES - finish and save speed dial number
+
+				// Save speed dial number
+				WriteCurrentSpeedDial(sDS.iSpeedDialIndex);
+ 38a:	c9 e0       	ldi	r28, 0x09	; 9
+ 38c:	d1 e0       	ldi	r29, 0x01	; 1
+ 38e:	88 81       	ld	r24, Y
+ 390:	70 df       	rcall	.-288    	; 0x272 <WriteCurrentSpeedDial>
+
+				// Leave SD mode
+				sDS.iSpeedDialIndex = -1;
+ 392:	8f ef       	ldi	r24, 0xFF	; 255
+ 394:	88 83       	st	Y, r24
+				sDS.iSpeedDialDigitIndex = -1;
+ 396:	80 93 08 01 	sts	0x0108, r24
+
+				// Beep to indicate that we done
+				GenerateDigit (DIGIT_TUNE_DESC, 800);
+ 39a:	60 e2       	ldi	r22, 0x20	; 32
+ 39c:	73 e0       	ldi	r23, 0x03	; 3
+ 39e:	84 ef       	ldi	r24, 0xF4	; 244
+ 3a0:	c4 de       	rcall	.-632    	; 0x12a <GenerateDigit>
+ 3a2:	28 c0       	rjmp	.+80     	; 0x3f4 <ProcessDialedDigit+0x150>
+			} 
+			else
+			{
+				// All good - set new digit to the array
+				sDS.arSpeedDial[sDS.iSpeedDialDigitIndex] = sDS.iDialedDigit;
+ 3a4:	c8 e0       	ldi	r28, 0x08	; 8
+ 3a6:	d1 e0       	ldi	r29, 0x01	; 1
+ 3a8:	e8 81       	ld	r30, Y
+ 3aa:	ff 27       	eor	r31, r31
+ 3ac:	e7 fd       	sbrc	r30, 7
+ 3ae:	f0 95       	com	r31
+ 3b0:	80 91 06 01 	lds	r24, 0x0106
+ 3b4:	ea 5f       	subi	r30, 0xFA	; 250
+ 3b6:	fe 4f       	sbci	r31, 0xFE	; 254
+ 3b8:	84 83       	std	Z+4, r24	; 0x04
+
+				// Generic beep - do not gererate DTMF code
+				GenerateDigit(DIGIT_BEEP_LOW, DTMF_DURATION_MS);
+ 3ba:	64 e6       	ldi	r22, 0x64	; 100
+ 3bc:	70 e0       	ldi	r23, 0x00	; 0
+ 3be:	83 ef       	ldi	r24, 0xF3	; 243
+ 3c0:	b4 de       	rcall	.-664    	; 0x12a <GenerateDigit>
+
+				// Next digit
+				sDS.iSpeedDialDigitIndex++;
+ 3c2:	88 81       	ld	r24, Y
+ 3c4:	8f 5f       	subi	r24, 0xFF	; 255
+ 3c6:	88 83       	st	Y, r24
+ 3c8:	15 c0       	rjmp	.+42     	; 0x3f4 <ProcessDialedDigit+0x150>
+			}
+		}
+	}
+	// Call SD stored number
+	else if (sDS.bSF_Selected && (sDS.iDialedDigit >= 3) && (sDS.iDialedDigit <= 9))
+ 3ca:	80 91 07 01 	lds	r24, 0x0107
+ 3ce:	88 23       	and	r24, r24
+ 3d0:	61 f0       	breq	.+24     	; 0x3ea <ProcessDialedDigit+0x146>
+ 3d2:	80 91 06 01 	lds	r24, 0x0106
+ 3d6:	83 30       	cpi	r24, 0x03	; 3
+ 3d8:	44 f0       	brlt	.+16     	; 0x3ea <ProcessDialedDigit+0x146>
+ 3da:	80 91 06 01 	lds	r24, 0x0106
+ 3de:	8a 30       	cpi	r24, 0x0A	; 10
+ 3e0:	24 f4       	brge	.+8      	; 0x3ea <ProcessDialedDigit+0x146>
+	{
+		// SF 3-9 -> Call speed dial number
+		Dial_SpeedDialNumber(sDS.iDialedDigit);
+ 3e2:	80 91 06 01 	lds	r24, 0x0106
+ 3e6:	0c df       	rcall	.-488    	; 0x200 <Dial_SpeedDialNumber>
+ 3e8:	05 c0       	rjmp	.+10     	; 0x3f4 <ProcessDialedDigit+0x150>
+	// Standard (non speed dial functionality)
+	else
+	{
+		// Standard (no speed dial, no special function) mode
+		// Generate DTMF code
+		GenerateDigit(sDS.iDialedDigit, DTMF_DURATION_MS);  
+ 3ea:	80 91 06 01 	lds	r24, 0x0106
+ 3ee:	64 e6       	ldi	r22, 0x64	; 100
+ 3f0:	70 e0       	ldi	r23, 0x00	; 0
+ 3f2:	9b de       	rcall	.-714    	; 0x12a <GenerateDigit>
+	}
+}
+ 3f4:	df 91       	pop	r29
+ 3f6:	cf 91       	pop	r28
+ 3f8:	08 95       	ret
+
+000003fa <main>:
+volatile type_DialStatus sDS;	// Global dial status structure
+
+
+//----- BEGIN MAIN ------------------------------------------------------------
+int main(void)
+{
+ 3fa:	cf 93       	push	r28
+ 3fc:	df 93       	push	r29
+ 3fe:	00 d0       	rcall	.+0      	; 0x400 <main+0x6>
+ 400:	1f 92       	push	r1
+ 402:	cd b7       	in	r28, 0x3d	; 61
+ 404:	de b7       	in	r29, 0x3e	; 62
+	// Program clock prescaller to divide +frequency by 1
+	// Write CLKPCE 1 and other bits 0	
+	CLKPR = (1<<CLKPCE);	
+ 406:	80 e8       	ldi	r24, 0x80	; 128
+ 408:	86 bd       	out	0x26, r24	; 38
+	// Write prescaler value with CLKPCE = 0
+	CLKPR = 0x00;
+ 40a:	16 bc       	out	0x26, r1	; 38
+
+	// Initialize I/O and global variables
+	init();
+ 40c:	24 de       	rcall	.-952    	; 0x56 <init>
+
+	// Turn PWM OFF
+	GenerateDigit(DIGIT_OFF, 0); 
+ 40e:	60 e0       	ldi	r22, 0x00	; 0
+ 410:	70 e0       	ldi	r23, 0x00	; 0
+ 412:	8f ef       	ldi	r24, 0xFF	; 255
+ 414:	8a de       	rcall	.-748    	; 0x12a <GenerateDigit>
+
+	// Local dial status variables 
+	volatile bool bPrevDialState = true;		// Rotor status
+ 416:	81 e0       	ldi	r24, 0x01	; 1
+ 418:	89 83       	std	Y+1, r24	; 0x01
+	volatile bool bPrevPulseState = false;	// Rotor pulse status
+ 41a:	1a 82       	std	Y+2, r1	; 0x02
+	volatile bool bCurPulseState = false;	// Rotor pulse status
+ 41c:	1b 82       	std	Y+3, r1	; 0x03
+			else
+			{
+				// Rotary dial at the rest position
+				// Reset all variables
+				bSF_DetectionActive = false;
+				sDS.bSF_Selected = false;
+ 41e:	0f 2e       	mov	r0, r31
+ 420:	f7 e0       	ldi	r31, 0x07	; 7
+ 422:	ef 2e       	mov	r14, r31
+ 424:	f1 e0       	ldi	r31, 0x01	; 1
+ 426:	ff 2e       	mov	r15, r31
+ 428:	f0 2d       	mov	r31, r0
+				sDS.iDialedDigit = DIGIT_OFF;
+ 42a:	06 e0       	ldi	r16, 0x06	; 6
+ 42c:	11 e0       	ldi	r17, 0x01	; 1
+ 42e:	dd 24       	eor	r13, r13
+ 430:	da 94       	dec	r13
+		{
+			if (!bCurDialState) 
+			{
+				// Dial just started
+				// Enabling special function detection
+				bSF_DetectionActive = true;
+ 432:	bb 24       	eor	r11, r11
+ 434:	b3 94       	inc	r11
+ 436:	cb 2c       	mov	r12, r11
+
+
+	// Main loop
+  	while (1)
+	{ 
+		bCurDialState = bit_is_set (PINB, PIN_DIAL);
+ 438:	86 b3       	in	r24, 0x16	; 22
+ 43a:	86 95       	lsr	r24
+ 43c:	81 70       	andi	r24, 0x01	; 1
+ 43e:	80 93 60 00 	sts	0x0060, r24
+		bCurPulseState = bit_is_set (PINB, PIN_PULSE);
+ 442:	86 b3       	in	r24, 0x16	; 22
+ 444:	82 fb       	bst	r24, 2
+ 446:	88 27       	eor	r24, r24
+ 448:	80 f9       	bld	r24, 0
+ 44a:	8b 83       	std	Y+3, r24	; 0x03
+
+
+		if (bPrevDialState != bCurDialState) 
+ 44c:	99 81       	ldd	r25, Y+1	; 0x01
+ 44e:	80 91 60 00 	lds	r24, 0x0060
+ 452:	98 17       	cp	r25, r24
+ 454:	39 f1       	breq	.+78     	; 0x4a4 <main+0xaa>
+		{
+			if (!bCurDialState) 
+ 456:	80 91 60 00 	lds	r24, 0x0060
+ 45a:	81 11       	cpse	r24, r1
+ 45c:	0b c0       	rjmp	.+22     	; 0x474 <main+0x7a>
+			{
+				// Dial just started
+				// Enabling special function detection
+				bSF_DetectionActive = true;
+ 45e:	c0 92 fb 00 	sts	0x00FB, r12
+				sDS.bSF_Selected = false;
+ 462:	f7 01       	movw	r30, r14
+ 464:	10 82       	st	Z, r1
+
+				sDS.iDialedDigit = 0;
+ 466:	f8 01       	movw	r30, r16
+ 468:	10 82       	st	Z, r1
+				SleepMS (50);	// Delay 50ms
+ 46a:	82 e3       	ldi	r24, 0x32	; 50
+ 46c:	90 e0       	ldi	r25, 0x00	; 0
+ 46e:	25 de       	rcall	.-950    	; 0xba <SleepMS>
+				cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin at start of pulse count
+ 470:	c5 98       	cbi	0x18, 5	; 24
+ 472:	22 c0       	rjmp	.+68     	; 0x4b8 <main+0xbe>
+			} 
+			else 
+			{
+				// Disabling SF detection (should be already disabled)
+				bSF_DetectionActive = false;
+ 474:	10 92 fb 00 	sts	0x00FB, r1
+
+				// Check that we detect a valid digit
+				if ((sDS.iDialedDigit <= 0) || (sDS.iDialedDigit > 10))
+ 478:	f8 01       	movw	r30, r16
+ 47a:	80 81       	ld	r24, Z
+ 47c:	18 16       	cp	r1, r24
+ 47e:	1c f4       	brge	.+6      	; 0x486 <main+0x8c>
+ 480:	80 81       	ld	r24, Z
+ 482:	8b 30       	cpi	r24, 0x0B	; 11
+ 484:	34 f0       	brlt	.+12     	; 0x492 <main+0x98>
+				{
+					// Should never happen - no pulses detected OR count more than 10 pulses
+					sDS.iDialedDigit = DIGIT_OFF;					
+ 486:	f8 01       	movw	r30, r16
+ 488:	d0 82       	st	Z, r13
+
+					// Do nothing
+					SleepMS (50);	// Delay 50ms
+ 48a:	82 e3       	ldi	r24, 0x32	; 50
+ 48c:	90 e0       	ldi	r25, 0x00	; 0
+ 48e:	15 de       	rcall	.-982    	; 0xba <SleepMS>
+ 490:	06 c0       	rjmp	.+12     	; 0x49e <main+0xa4>
+				}
+				else 
+				{
+					// Got a valid digit - process it			
+					if (sDS.iDialedDigit == 10)
+ 492:	f8 01       	movw	r30, r16
+ 494:	80 81       	ld	r24, Z
+ 496:	8a 30       	cpi	r24, 0x0A	; 10
+ 498:	09 f4       	brne	.+2      	; 0x49c <main+0xa2>
+					{
+						// 10 pulses => 0
+						sDS.iDialedDigit = 0;
+ 49a:	10 82       	st	Z, r1
+					}
+
+					ProcessDialedDigit();
+ 49c:	03 df       	rcall	.-506    	; 0x2a4 <ProcessDialedDigit>
+				}
+					
+				sDS.bSF_Selected = false;	// Reset SF flag
+ 49e:	f7 01       	movw	r30, r14
+ 4a0:	10 82       	st	Z, r1
+ 4a2:	0a c0       	rjmp	.+20     	; 0x4b8 <main+0xbe>
+			}	
+		} 
+		else 
+		{
+			if (!bCurDialState) 
+ 4a4:	80 91 60 00 	lds	r24, 0x0060
+ 4a8:	88 23       	and	r24, r24
+ 4aa:	31 f0       	breq	.+12     	; 0x4b8 <main+0xbe>
+			}
+			else
+			{
+				// Rotary dial at the rest position
+				// Reset all variables
+				bSF_DetectionActive = false;
+ 4ac:	10 92 fb 00 	sts	0x00FB, r1
+				sDS.bSF_Selected = false;
+ 4b0:	f7 01       	movw	r30, r14
+ 4b2:	10 82       	st	Z, r1
+				sDS.iDialedDigit = DIGIT_OFF;
+ 4b4:	f8 01       	movw	r30, r16
+ 4b6:	d0 82       	st	Z, r13
+			}
+		}
+
+		bPrevDialState = bCurDialState;
+ 4b8:	80 91 60 00 	lds	r24, 0x0060
+ 4bc:	89 83       	std	Y+1, r24	; 0x01
+		bPrevPulseState = bCurPulseState;
+ 4be:	8b 81       	ldd	r24, Y+3	; 0x03
+ 4c0:	8a 83       	std	Y+2, r24	; 0x02
+
+		// Don't power down if special function detection is active		
+		if (bSF_DetectionActive)
+ 4c2:	80 91 fb 00 	lds	r24, 0x00FB
+ 4c6:	88 23       	and	r24, r24
+ 4c8:	01 f1       	breq	.+64     	; 0x50a <main+0x110>
+		{
+			// SF detection in progress - we need timer to run (IDLE mode)
+			set_sleep_mode(SLEEP_MODE_IDLE);		
+ 4ca:	85 b7       	in	r24, 0x35	; 53
+ 4cc:	87 7e       	andi	r24, 0xE7	; 231
+ 4ce:	85 bf       	out	0x35, r24	; 53
+			sleep_mode();
+ 4d0:	85 b7       	in	r24, 0x35	; 53
+ 4d2:	80 62       	ori	r24, 0x20	; 32
+ 4d4:	85 bf       	out	0x35, r24	; 53
+ 4d6:	88 95       	sleep
+ 4d8:	85 b7       	in	r24, 0x35	; 53
+ 4da:	8f 7d       	andi	r24, 0xDF	; 223
+ 4dc:	85 bf       	out	0x35, r24	; 53
+
+			// Special function mode detected?
+			if (ulDelayCounter >= SF_DELAY_MS * T0_OVERFLOW_PER_MS)
+ 4de:	80 91 fc 00 	lds	r24, 0x00FC
+ 4e2:	90 91 fd 00 	lds	r25, 0x00FD
+ 4e6:	a0 91 fe 00 	lds	r26, 0x00FE
+ 4ea:	b0 91 ff 00 	lds	r27, 0x00FF
+ 4ee:	80 33       	cpi	r24, 0x30	; 48
+ 4f0:	95 47       	sbci	r25, 0x75	; 117
+ 4f2:	a1 05       	cpc	r26, r1
+ 4f4:	b1 05       	cpc	r27, r1
+ 4f6:	a0 f0       	brcs	.+40     	; 0x520 <main+0x126>
+			{
+				// SF mode detected
+				sDS.bSF_Selected = true;
+ 4f8:	f7 01       	movw	r30, r14
+ 4fa:	b0 82       	st	Z, r11
+				bSF_DetectionActive = false;
+ 4fc:	10 92 fb 00 	sts	0x00FB, r1
+
+				// Indicate that we entered SF mode wit short beep
+				GenerateDigit (DIGIT_BEEP, 200);
+ 500:	68 ec       	ldi	r22, 0xC8	; 200
+ 502:	70 e0       	ldi	r23, 0x00	; 0
+ 504:	86 ef       	ldi	r24, 0xF6	; 246
+ 506:	11 de       	rcall	.-990    	; 0x12a <GenerateDigit>
+ 508:	0b c0       	rjmp	.+22     	; 0x520 <main+0x126>
+			}
+		}
+		else
+		{
+			// Don't need timer - sleep to power down mode
+			set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+ 50a:	85 b7       	in	r24, 0x35	; 53
+ 50c:	87 7e       	andi	r24, 0xE7	; 231
+ 50e:	80 61       	ori	r24, 0x10	; 16
+ 510:	85 bf       	out	0x35, r24	; 53
+			sleep_mode();
+ 512:	85 b7       	in	r24, 0x35	; 53
+ 514:	80 62       	ori	r24, 0x20	; 32
+ 516:	85 bf       	out	0x35, r24	; 53
+ 518:	88 95       	sleep
+ 51a:	85 b7       	in	r24, 0x35	; 53
+ 51c:	8f 7d       	andi	r24, 0xDF	; 223
+ 51e:	85 bf       	out	0x35, r24	; 53
+		}
+
+		if(bPulseDetected)			// [AW] toggle debug pin if pulse was detected this loop
+ 520:	80 91 fa 00 	lds	r24, 0x00FA
+ 524:	88 23       	and	r24, r24
+ 526:	09 f4       	brne	.+2      	; 0x52a <main+0x130>
+ 528:	87 cf       	rjmp	.-242    	; 0x438 <main+0x3e>
+		{
+			sbi(PORTB, PIN_DEBUG); 		// [AW] set debug pin high when pulse is detected
+ 52a:	c5 9a       	sbi	0x18, 5	; 24
+			SleepMS (20);				// delay 50ms
+ 52c:	84 e1       	ldi	r24, 0x14	; 20
+ 52e:	90 e0       	ldi	r25, 0x00	; 0
+ 530:	c4 dd       	rcall	.-1144   	; 0xba <SleepMS>
+			cbi(PORTB, PIN_DEBUG);
+ 532:	c5 98       	cbi	0x18, 5	; 24
+			bPulseDetected = false;
+ 534:	10 92 fa 00 	sts	0x00FA, r1
+ 538:	7f cf       	rjmp	.-258    	; 0x438 <main+0x3e>
+
+0000053a <__vector_5>:
+}
+
+
+// Timer overflow interrupt service routine
+TIMER_INTERRUPT_HANDLER(SIG_OVERFLOW0)
+{ 
+ 53a:	1f 92       	push	r1
+ 53c:	0f 92       	push	r0
+ 53e:	0f b6       	in	r0, 0x3f	; 63
+ 540:	0f 92       	push	r0
+ 542:	11 24       	eor	r1, r1
+ 544:	2f 93       	push	r18
+ 546:	3f 93       	push	r19
+ 548:	8f 93       	push	r24
+ 54a:	9f 93       	push	r25
+ 54c:	af 93       	push	r26
+ 54e:	bf 93       	push	r27
+ 550:	ef 93       	push	r30
+ 552:	ff 93       	push	r31
+	unsigned char ucSinA;
+	unsigned char ucSinB;
+
+	// A component (high frequency) is always used
+	// move Pointer about step width ahead
+	iCurSinValA += cSWa;      
+ 554:	20 91 05 01 	lds	r18, 0x0105
+ 558:	80 91 02 01 	lds	r24, 0x0102
+ 55c:	90 91 03 01 	lds	r25, 0x0103
+ 560:	82 0f       	add	r24, r18
+ 562:	91 1d       	adc	r25, r1
+ 564:	90 93 03 01 	sts	0x0103, r25
+ 568:	80 93 02 01 	sts	0x0102, r24
+	// normalize Temp-Pointer 
+	unsigned int i_TmpSinValA = (char)(((iCurSinValA + 4) >> 3) & (0x007F)); 
+ 56c:	e0 91 02 01 	lds	r30, 0x0102
+ 570:	f0 91 03 01 	lds	r31, 0x0103
+ 574:	34 96       	adiw	r30, 0x04	; 4
+ 576:	f6 95       	lsr	r31
+ 578:	e7 95       	ror	r30
+ 57a:	f6 95       	lsr	r31
+ 57c:	e7 95       	ror	r30
+ 57e:	f6 95       	lsr	r31
+ 580:	e7 95       	ror	r30
+ 582:	ef 77       	andi	r30, 0x7F	; 127
+ 584:	ff 27       	eor	r31, r31
+	ucSinA = auc_SinParam[i_TmpSinValA];
+ 586:	e7 58       	subi	r30, 0x87	; 135
+ 588:	ff 4f       	sbci	r31, 0xFF	; 255
+ 58a:	20 81       	ld	r18, Z
+
+
+	//	B component (low frequency) is optional
+	if (cSWb > 0)
+ 58c:	80 91 04 01 	lds	r24, 0x0104
+ 590:	88 23       	and	r24, r24
+ 592:	e9 f0       	breq	.+58     	; 0x5ce <__vector_5+0x94>
+	{
+		// move Pointer about step width ahead
+		iCurSinValB += cSWb;	
+ 594:	30 91 04 01 	lds	r19, 0x0104
+ 598:	80 91 00 01 	lds	r24, 0x0100
+ 59c:	90 91 01 01 	lds	r25, 0x0101
+ 5a0:	83 0f       	add	r24, r19
+ 5a2:	91 1d       	adc	r25, r1
+ 5a4:	90 93 01 01 	sts	0x0101, r25
+ 5a8:	80 93 00 01 	sts	0x0100, r24
+		// normalize Temp-Pointer	
+		unsigned int i_TmpSinValB = (char)(((iCurSinValB + 4) >> 3) & (0x007F));		
+ 5ac:	e0 91 00 01 	lds	r30, 0x0100
+ 5b0:	f0 91 01 01 	lds	r31, 0x0101
+ 5b4:	34 96       	adiw	r30, 0x04	; 4
+ 5b6:	f6 95       	lsr	r31
+ 5b8:	e7 95       	ror	r30
+ 5ba:	f6 95       	lsr	r31
+ 5bc:	e7 95       	ror	r30
+ 5be:	f6 95       	lsr	r31
+ 5c0:	e7 95       	ror	r30
+ 5c2:	ef 77       	andi	r30, 0x7F	; 127
+ 5c4:	ff 27       	eor	r31, r31
+		ucSinB = auc_SinParam[i_TmpSinValB];
+ 5c6:	e7 58       	subi	r30, 0x87	; 135
+ 5c8:	ff 4f       	sbci	r31, 0xFF	; 255
+ 5ca:	80 81       	ld	r24, Z
+ 5cc:	01 c0       	rjmp	.+2      	; 0x5d0 <__vector_5+0x96>
+	}
+	else
+	{
+		ucSinB = 0;
+ 5ce:	80 e0       	ldi	r24, 0x00	; 0
+	}
+
+	// calculate PWM value: high frequency value + 3/4 low frequency value
+	OCR0A = (ucSinA + (ucSinB - (ucSinB >> 2)));
+ 5d0:	28 0f       	add	r18, r24
+ 5d2:	98 2f       	mov	r25, r24
+ 5d4:	96 95       	lsr	r25
+ 5d6:	96 95       	lsr	r25
+ 5d8:	82 2f       	mov	r24, r18
+ 5da:	89 1b       	sub	r24, r25
+ 5dc:	89 bd       	out	0x29, r24	; 41
+
+	ulDelayCounter++;
+ 5de:	80 91 fc 00 	lds	r24, 0x00FC
+ 5e2:	90 91 fd 00 	lds	r25, 0x00FD
+ 5e6:	a0 91 fe 00 	lds	r26, 0x00FE
+ 5ea:	b0 91 ff 00 	lds	r27, 0x00FF
+ 5ee:	01 96       	adiw	r24, 0x01	; 1
+ 5f0:	a1 1d       	adc	r26, r1
+ 5f2:	b1 1d       	adc	r27, r1
+ 5f4:	80 93 fc 00 	sts	0x00FC, r24
+ 5f8:	90 93 fd 00 	sts	0x00FD, r25
+ 5fc:	a0 93 fe 00 	sts	0x00FE, r26
+ 600:	b0 93 ff 00 	sts	0x00FF, r27
+}
+ 604:	ff 91       	pop	r31
+ 606:	ef 91       	pop	r30
+ 608:	bf 91       	pop	r27
+ 60a:	af 91       	pop	r26
+ 60c:	9f 91       	pop	r25
+ 60e:	8f 91       	pop	r24
+ 610:	3f 91       	pop	r19
+ 612:	2f 91       	pop	r18
+ 614:	0f 90       	pop	r0
+ 616:	0f be       	out	0x3f, r0	; 63
+ 618:	0f 90       	pop	r0
+ 61a:	1f 90       	pop	r1
+ 61c:	18 95       	reti
+
+0000061e <__vector_1>:
+
+
+// [AW] Handler for external interrupt on INT0 (PB2, pin 7)
+ISR(INT0_vect)
+{
+ 61e:	1f 92       	push	r1
+ 620:	0f 92       	push	r0
+ 622:	0f b6       	in	r0, 0x3f	; 63
+ 624:	0f 92       	push	r0
+ 626:	11 24       	eor	r1, r1
+ 628:	8f 93       	push	r24
+ 62a:	ef 93       	push	r30
+ 62c:	ff 93       	push	r31
+	if (!bCurDialState)
+ 62e:	80 91 60 00 	lds	r24, 0x0060
+ 632:	81 11       	cpse	r24, r1
+ 634:	0a c0       	rjmp	.+20     	; 0x64a <__vector_1+0x2c>
+	{
+	    // Disabling SF detection
+		bSF_DetectionActive = false;
+ 636:	10 92 fb 00 	sts	0x00FB, r1
+
+		// A pulse just started
+		bPulseDetected = true;			// [AW] Set flag to be handled by main() - never delay in interrupt vector
+ 63a:	81 e0       	ldi	r24, 0x01	; 1
+ 63c:	80 93 fa 00 	sts	0x00FA, r24
+		sDS.iDialedDigit++;
+ 640:	e6 e0       	ldi	r30, 0x06	; 6
+ 642:	f1 e0       	ldi	r31, 0x01	; 1
+ 644:	80 81       	ld	r24, Z
+ 646:	8f 5f       	subi	r24, 0xFF	; 255
+ 648:	80 83       	st	Z, r24
+	}
+}
+ 64a:	ff 91       	pop	r31
+ 64c:	ef 91       	pop	r30
+ 64e:	8f 91       	pop	r24
+ 650:	0f 90       	pop	r0
+ 652:	0f be       	out	0x3f, r0	; 63
+ 654:	0f 90       	pop	r0
+ 656:	1f 90       	pop	r1
+ 658:	18 95       	reti
+
+0000065a <__vector_2>:
+
+// [AW] Interrupt handlers updated to new code convention
+// Interrupt initiated by pin change on any enabled pin
+ISR(PCINT0_vect)
+{
+ 65a:	1f 92       	push	r1
+ 65c:	0f 92       	push	r0
+ 65e:	0f b6       	in	r0, 0x3f	; 63
+ 660:	0f 92       	push	r0
+ 662:	11 24       	eor	r1, r1
+ 664:	8f 93       	push	r24
+	#else
+		//round up by default
+		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+	#endif
+
+	__builtin_avr_delay_cycles(__ticks_dc);
+ 666:	85 e8       	ldi	r24, 0x85	; 133
+ 668:	8a 95       	dec	r24
+ 66a:	f1 f7       	brne	.-4      	; 0x668 <__vector_2+0xe>
+ 66c:	00 00       	nop
+	// Do nothing, just wake up MCU
+	_delay_us(100);
+}
+ 66e:	8f 91       	pop	r24
+ 670:	0f 90       	pop	r0
+ 672:	0f be       	out	0x3f, r0	; 63
+ 674:	0f 90       	pop	r0
+ 676:	1f 90       	pop	r1
+ 678:	18 95       	reti
+
+0000067a <__vector_default>:
+
+// [AW] Handler for any unspecified 'bad' interrupts
+ISR(BADISR_vect)
+{
+ 67a:	1f 92       	push	r1
+ 67c:	0f 92       	push	r0
+ 67e:	0f b6       	in	r0, 0x3f	; 63
+ 680:	0f 92       	push	r0
+ 682:	11 24       	eor	r1, r1
+ 684:	8f 93       	push	r24
+ 686:	85 e8       	ldi	r24, 0x85	; 133
+ 688:	8a 95       	dec	r24
+ 68a:	f1 f7       	brne	.-4      	; 0x688 <__vector_default+0xe>
+ 68c:	00 00       	nop
+	// Do nothing, just wake up MCU
+	_delay_us(100);
+ 68e:	8f 91       	pop	r24
+ 690:	0f 90       	pop	r0
+ 692:	0f be       	out	0x3f, r0	; 63
+ 694:	0f 90       	pop	r0
+ 696:	1f 90       	pop	r1
+ 698:	18 95       	reti
+
+0000069a <__udivmodhi4>:
+ 69a:	aa 1b       	sub	r26, r26
+ 69c:	bb 1b       	sub	r27, r27
+ 69e:	51 e1       	ldi	r21, 0x11	; 17
+ 6a0:	07 c0       	rjmp	.+14     	; 0x6b0 <__udivmodhi4_ep>
+
+000006a2 <__udivmodhi4_loop>:
+ 6a2:	aa 1f       	adc	r26, r26
+ 6a4:	bb 1f       	adc	r27, r27
+ 6a6:	a6 17       	cp	r26, r22
+ 6a8:	b7 07       	cpc	r27, r23
+ 6aa:	10 f0       	brcs	.+4      	; 0x6b0 <__udivmodhi4_ep>
+ 6ac:	a6 1b       	sub	r26, r22
+ 6ae:	b7 0b       	sbc	r27, r23
+
+000006b0 <__udivmodhi4_ep>:
+ 6b0:	88 1f       	adc	r24, r24
+ 6b2:	99 1f       	adc	r25, r25
+ 6b4:	5a 95       	dec	r21
+ 6b6:	a9 f7       	brne	.-22     	; 0x6a2 <__udivmodhi4_loop>
+ 6b8:	80 95       	com	r24
+ 6ba:	90 95       	com	r25
+ 6bc:	bc 01       	movw	r22, r24
+ 6be:	cd 01       	movw	r24, r26
+ 6c0:	08 95       	ret
+
+000006c2 <__eerd_block_tn85>:
+ 6c2:	dc 01       	movw	r26, r24
+ 6c4:	cb 01       	movw	r24, r22
+
+000006c6 <__eerd_blraw_tn85>:
+ 6c6:	fc 01       	movw	r30, r24
+ 6c8:	e1 99       	sbic	0x1c, 1	; 28
+ 6ca:	fe cf       	rjmp	.-4      	; 0x6c8 <__eerd_blraw_tn85+0x2>
+ 6cc:	06 c0       	rjmp	.+12     	; 0x6da <__eerd_blraw_tn85+0x14>
+ 6ce:	ff bb       	out	0x1f, r31	; 31
+ 6d0:	ee bb       	out	0x1e, r30	; 30
+ 6d2:	e0 9a       	sbi	0x1c, 0	; 28
+ 6d4:	31 96       	adiw	r30, 0x01	; 1
+ 6d6:	0d b2       	in	r0, 0x1d	; 29
+ 6d8:	0d 92       	st	X+, r0
+ 6da:	41 50       	subi	r20, 0x01	; 1
+ 6dc:	50 40       	sbci	r21, 0x00	; 0
+ 6de:	b8 f7       	brcc	.-18     	; 0x6ce <__eerd_blraw_tn85+0x8>
+ 6e0:	08 95       	ret
+
+000006e2 <__eeupd_block_tn85>:
+ 6e2:	dc 01       	movw	r26, r24
+ 6e4:	a4 0f       	add	r26, r20
+ 6e6:	b5 1f       	adc	r27, r21
+ 6e8:	41 50       	subi	r20, 0x01	; 1
+ 6ea:	50 40       	sbci	r21, 0x00	; 0
+ 6ec:	40 f0       	brcs	.+16     	; 0x6fe <__eeupd_block_tn85+0x1c>
+ 6ee:	cb 01       	movw	r24, r22
+ 6f0:	84 0f       	add	r24, r20
+ 6f2:	95 1f       	adc	r25, r21
+ 6f4:	2e 91       	ld	r18, -X
+ 6f6:	05 d0       	rcall	.+10     	; 0x702 <__eeupd_r18_tn85>
+ 6f8:	41 50       	subi	r20, 0x01	; 1
+ 6fa:	50 40       	sbci	r21, 0x00	; 0
+ 6fc:	d8 f7       	brcc	.-10     	; 0x6f4 <__eeupd_block_tn85+0x12>
+ 6fe:	08 95       	ret
+
+00000700 <__eeupd_byte_tn85>:
+ 700:	26 2f       	mov	r18, r22
+
+00000702 <__eeupd_r18_tn85>:
+ 702:	e1 99       	sbic	0x1c, 1	; 28
+ 704:	fe cf       	rjmp	.-4      	; 0x702 <__eeupd_r18_tn85>
+ 706:	9f bb       	out	0x1f, r25	; 31
+ 708:	8e bb       	out	0x1e, r24	; 30
+ 70a:	e0 9a       	sbi	0x1c, 0	; 28
+ 70c:	01 97       	sbiw	r24, 0x01	; 1
+ 70e:	0d b2       	in	r0, 0x1d	; 29
+ 710:	02 16       	cp	r0, r18
+ 712:	39 f0       	breq	.+14     	; 0x722 <__eeupd_r18_tn85+0x20>
+ 714:	1c ba       	out	0x1c, r1	; 28
+ 716:	2d bb       	out	0x1d, r18	; 29
+ 718:	0f b6       	in	r0, 0x3f	; 63
+ 71a:	f8 94       	cli
+ 71c:	e2 9a       	sbi	0x1c, 2	; 28
+ 71e:	e1 9a       	sbi	0x1c, 1	; 28
+ 720:	0f be       	out	0x3f, r0	; 63
+ 722:	08 95       	ret
+
+00000724 <_exit>:
+ 724:	f8 94       	cli
+
+00000726 <__stop_program>:
+ 726:	ff cf       	rjmp	.-2      	; 0x726 <__stop_program>
