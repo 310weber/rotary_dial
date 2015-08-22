@@ -41,6 +41,7 @@ volatile unsigned long ulDelayCounter = 0;		// Delay counter for sleep function
 
 volatile bool bSF_DetectionActive = false;		// SF detection active [AW] Moved from local main() variables
 volatile bool bCurDialState = true;		     	// Rotor status [AW] Moved from local main() variables
+volatile bool bPulseDetected = false;			// [AW] Pass to main() when pulse (rising edge) detected on INT0
 
 // Dial status structure
 typedef struct struct_DialStatus
@@ -98,6 +99,7 @@ int main(void)
 
 				sDS.iDialedDigit = 0;
 				SleepMS (50);	// Delay 50ms
+				cbi(PORTB, PIN_DEBUG);        // [AW] clear debug pin at start of pulse count
 			}
 			else 
 			{
@@ -173,8 +175,15 @@ int main(void)
 			sleep_mode();
 		}
 
+		if(bPulseDetected)			// [AW] toggle debug pin if pulse was detected this loop
+		{
+			sbi(PORTB, PIN_DEBUG); 		// [AW] set debug pin high when pulse is detected
+			SleepMS (20);				// delay 50ms
+			cbi(PORTB, PIN_DEBUG);
+			bPulseDetected = false;
+		}
 	}
-
+		 
 	return 0;
 }
 //----- END MAIN ------------------------------------------------------------
@@ -321,7 +330,7 @@ void init (void)
 	
 	// Configure I/O pins
 	PORTB = 0;	// Reset all outputs. Force PWM output (PB0) to 0
-	DDRB   = (1 << PIN_PWM_OUT);	// PWM output (OC0A pin)
+	DDRB   = (1 << PIN_PWM_OUT) | (1 << PIN_DEBUG);	// PWM output (OC0A pin) [AW] and debug (PB5)
 	PORTB  = 0;  // [AW] Disable Pull-ups - external HW debounce
 
 	// Disable unused modules to save power
@@ -523,6 +532,7 @@ ISR(INT0_vect)
 		bSF_DetectionActive = false;
 
 		// A pulse just started
+		bPulseDetected = true;			// [AW] Set flag to be handled by main() - never delay in interrupt vector
 		sDS.iDialedDigit++;
 	}
 }

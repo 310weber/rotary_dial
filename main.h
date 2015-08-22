@@ -57,8 +57,8 @@
 // PB0 (OC0A) as PWM output
 #define PIN_PWM_OUT PB0
 
-#define PIN_DIAL PB2
-#define PIN_PULSE PB1
+#define PIN_DIAL PB1          // [AW] was PB2
+#define PIN_PULSE PB2         // [AW] was PB1 - moved to allow pulse to interrupt on rising edge (INT0)
 #define PIN_DEBUG PB5         // [AW] toggle pin for debug
 
 
