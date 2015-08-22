@@ -7,5 +7,5 @@ sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:r:low_fuse.hex:h
 [Write Fuses (with debug, reset disabled)]
 sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:w:0xcd:m -U hfuse:w:0x5f:m -U efuse:w:0xff:m
 
-Write Fuses (without debug, reset enabled)]
-
+[Write Fuses (without debug, reset enabled)]
+sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:w:0xcd:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
