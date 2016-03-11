@@ -4,8 +4,14 @@ sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U flash:w:main.hex
 [Read Fuses]
 sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:r:low_fuse.hex:h
 
-[Write Fuses (with debug, reset disabled)]
-sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:w:0xcd:m -U hfuse:w:0x5f:m -U efuse:w:0xff:m
-
 [Write Fuses (without debug, reset enabled)]
 sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:w:0xcd:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+
+
+***WARNING***
+Do not use the fuse settings below unless you know what you're doing - these settings give you one more GPIO for
+debugging but you will not be able to re-program the chip without a high voltage programmer.
+See https://sites.google.com/site/wayneholder/attiny-fuse-reset
+
+[Write Fuses (with debug, reset disabled)]
+sudo avrdude -c avrispv2 -p t85 -P usb -B 32 -U lfuse:w:0xcd:m -U hfuse:w:0x5f:m -U efuse:w:0xff:m

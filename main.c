@@ -1,9 +1,12 @@
 //*****************************************************************************
 // Title		: Pulse to tone (DTMF) converter
 // Author		: Boris Cherkasskiy
+//                http://boris0.blogspot.ca/2013/09/rotary-dial-for-digital-age.html
 // Created		: 2011-10-24
 // Modified		: Arnie Weber 2015-06-22
-// 					https://bitbucket.org/310weber/rotary_dial/
+//                https://bitbucket.org/310weber/rotary_dial/
+//                NOTE: This code is not compatible with Boris's original hardware
+//                      due to changed pin-out (see Eagle files for details)
 //
 //
 // This code is distributed under the GNU Public License
