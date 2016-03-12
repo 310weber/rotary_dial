@@ -1,7 +1,7 @@
 # Rotary phone Pulse to DTMF Converter #
 AVR code for ATTiny85 which counts pulses from a rotary phone dialer and outputs the corresponding DTMF tone on the phone line. 
 
-Modified from the original work by Boris Cherkasskiy - [http://boris0.blogspot.ca/2013/09/rotary-dial-for-digital-age.html](Link URL)
+Modified from the original work by Boris Cherkasskiy - [http://boris0.blogspot.ca/2013/09/rotary-dial-for-digital-age.html](http://boris0.blogspot.ca/2013/09/rotary-dial-for-digital-age.html)
 
 Modified by Arnie Weber.  GPL license, all text above and below must be included in any redistribution
 
